@@ -3307,7 +3307,7 @@ public class JobTracker implements MRConstants, InterTrackerProtocol,
                                                   boolean restarted,
                                                   boolean initialContact,
                                                   boolean acceptNewTasks, 
-                                                  short responseId) 
+                                                  short responseId) // NOTE: lxf
     throws IOException {
     if (LOG.isDebugEnabled()) {
       LOG.debug("Got heartbeat from: " + status.getTrackerName() + 

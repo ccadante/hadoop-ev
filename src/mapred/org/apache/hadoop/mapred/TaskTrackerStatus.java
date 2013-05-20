@@ -48,7 +48,7 @@ public class TaskTrackerStatus implements Writable {
   String host;
   int httpPort;
   int failures;
-  List<TaskStatus> taskReports;
+  List<TaskStatus> taskReports; //NOTE: lxf
     
   volatile long lastSeen;
   private int maxMapTasks;

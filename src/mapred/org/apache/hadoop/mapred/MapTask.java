@@ -67,6 +67,7 @@ import org.apache.hadoop.mapreduce.split.JobSplit;
 import org.apache.hadoop.mapreduce.split.JobSplit.SplitMetaInfo;
 import org.apache.hadoop.mapreduce.split.JobSplit.TaskSplitIndex;
 import org.apache.hadoop.mapreduce.split.JobSplit.TaskSplitMetaInfo;
+import org.apache.hadoop.mapreduce.EVStatistics;
 import org.apache.hadoop.mapreduce.TaskAttemptContext;
 import org.apache.hadoop.security.UserGroupInformation;
 import org.apache.hadoop.util.IndexedSortable;
@@ -92,6 +93,8 @@ class MapTask extends Task {
     setPhase(TaskStatus.Phase.MAP); 
   }
 
+  EVStatistics myEVStat = null;
+  
   public MapTask() {
     super();
   }
@@ -762,6 +765,9 @@ class MapTask extends Task {
 
       input.initialize(split, mapperContext);
       mapper.run(mapperContext);
+      myEVStat = mapperContext.getEVStats();
+      LOG.warn("Get EVStatistics with size of " + myEVStat.getSize() + 
+    		  " and one value as " + myEVStat.getFirstStat());
       input.close();
       output.close(mapperContext);
     } catch (NoSuchMethodException e) {
@@ -773,6 +779,10 @@ class MapTask extends Task {
     } catch (IllegalAccessException e) {
       throw new IOException("Can't invoke Context constructor", e);
     }
+  }
+  
+  public EVStatistics getEVStats(){
+	  return myEVStat;
   }
 
   interface MapOutputCollector<K, V> {

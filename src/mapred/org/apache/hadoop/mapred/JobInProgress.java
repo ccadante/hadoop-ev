@@ -719,6 +719,7 @@ public class JobInProgress {
     maps = new TaskInProgress[numMapTasks];
     for(int i=0; i < numMapTasks; ++i) {
       inputLength += splits[i].getInputDataLength();
+      LOG.warn("Init new Map tasks.");
       maps[i] = new TaskInProgress(jobId, jobFile, 
                                    splits[i], 
                                    jobtracker, conf, this, i, numSlotsPerMap);

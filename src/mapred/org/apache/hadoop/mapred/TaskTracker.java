@@ -81,6 +81,7 @@ import org.apache.hadoop.mapred.TaskLog.LogName;
 import org.apache.hadoop.mapred.TaskStatus.Phase;
 import org.apache.hadoop.mapred.TaskTrackerStatus.TaskTrackerHealthStatus;
 import org.apache.hadoop.mapred.pipes.Submitter;
+import org.apache.hadoop.mapreduce.EVStatistics;
 import org.apache.hadoop.mapreduce.TaskType;
 import org.apache.hadoop.mapreduce.security.SecureShuffleUtils;
 import org.apache.hadoop.mapreduce.security.token.JobTokenIdentifier;
@@ -1787,7 +1788,7 @@ public class TaskTracker implements MRConstants, TaskUmbilicalProtocol,
     // else resend the previous status information.
     //
     if (status == null) {
-      synchronized (this) {
+      synchronized (this) { //NOTE: lxf
         status = new TaskTrackerStatus(taskTrackerName, localHostname, 
                                        httpPort, 
                                        cloneAndResetRunningTaskStatuses(
@@ -1876,7 +1877,7 @@ public class TaskTracker implements MRConstants, TaskUmbilicalProtocol,
           } else {
             reduceTotal--;
           }
-          myInstrumentation.completeTask(taskStatus.getTaskID());
+          myInstrumentation.completeTask(taskStatus.getTaskID()); //NOTE: lxf
           runningTasks.remove(taskStatus.getTaskID());
         }
       }
@@ -2546,6 +2547,7 @@ public class TaskTracker implements MRConstants, TaskUmbilicalProtocol,
   ///////////////////////////////////////////////////////
   class TaskInProgress {
     Task task;
+    EVStatistics myEVStat = null;
     long lastProgressReport;
     StringBuffer diagnosticInfo = new StringBuffer();
     private TaskRunner runner;
@@ -2649,7 +2651,7 @@ public class TaskTracker implements MRConstants, TaskUmbilicalProtocol,
     /**
      */
     public synchronized TaskStatus getStatus() {
-      taskStatus.setDiagnosticInfo(diagnosticInfo.toString());
+      taskStatus.setDiagnosticInfo(diagnosticInfo.toString()); //NOTE: lxf
       if (diagnosticInfo.length() > 0) {
         diagnosticInfo = new StringBuffer();
       }
@@ -3003,7 +3005,11 @@ public class TaskTracker implements MRConstants, TaskUmbilicalProtocol,
         cleanup(needCleanup);
       } catch (IOException ie) {
       }
-
+      
+      if (task.isMapTask()){
+    	  myEVStat = ((MapTask)task).getEVStats();
+    	  LOG.warn("TaskInProgress: " + myEVStat.toString());
+      }
     }
     
 

@@ -20,9 +20,12 @@ package org.apache.hadoop.mapreduce;
 
 import java.io.IOException;
 
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.io.RawComparator;
 import org.apache.hadoop.io.compress.CompressionCodec;
+import org.apache.hadoop.mapreduce.EVStatistics.StatsType;
 
 /** 
  * Maps input key/value pairs to a set of intermediate key/value pairs.  
@@ -93,9 +96,16 @@ import org.apache.hadoop.io.compress.CompressionCodec;
  * @see Reducer
  */
 public class Mapper<KEYIN, VALUEIN, KEYOUT, VALUEOUT> {
-
+	private static final Log LOG = LogFactory.getLog(Mapper.class);
+	
   public class Context 
     extends MapContext<KEYIN,VALUEIN,KEYOUT,VALUEOUT> {
+	  EVStatistics myEVStat = null;
+	  KEYIN lastKeyIn;
+	  VALUEIN lastValueIn;
+	  KEYOUT lastKeyOut;
+	  VALUEOUT lastValueOut;
+	  
     public Context(Configuration conf, TaskAttemptID taskid,
                    RecordReader<KEYIN,VALUEIN> reader,
                    RecordWriter<KEYOUT,VALUEOUT> writer,
@@ -103,6 +113,31 @@ public class Mapper<KEYIN, VALUEIN, KEYOUT, VALUEOUT> {
                    StatusReporter reporter,
                    InputSplit split) throws IOException, InterruptedException {
       super(conf, taskid, reader, writer, committer, reporter, split);
+      myEVStat = new EVStatistics();
+    }
+    
+    public void write(KEYOUT key, VALUEOUT value
+    		) throws IOException, InterruptedException {
+    	super.write(key, value);
+    	lastKeyIn = super.getCurrentKey();
+    	//lastValueIn = super.getCurrentValue();
+    	//lastKeyOut = key;
+    	//lastValueOut = value;
+	}
+    
+    /**
+     * add one piece of stat into EVStatistics
+     * @param time in microsecond, us
+     */
+    public void addStat(long time){
+    	if(myEVStat == null)
+    		myEVStat = new EVStatistics();
+    	myEVStat.addTimeStat(new StatsType(
+    			lastKeyIn.getClass().getName(), lastKeyIn.toString()), time);
+    }
+    
+    public EVStatistics getEVStats(){
+    	return myEVStat;
     }
   }
   
@@ -141,7 +176,10 @@ public class Mapper<KEYIN, VALUEIN, KEYOUT, VALUEOUT> {
   public void run(Context context) throws IOException, InterruptedException {
     setup(context);
     while (context.nextKeyValue()) {
+    	long t1 = System.nanoTime();
       map(context.getCurrentKey(), context.getCurrentValue(), context);
+      long t2 = System.nanoTime();
+      context.addStat((t2 - t1)/1000);
     }
     cleanup(context);
   }
