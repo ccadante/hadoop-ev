@@ -20,6 +20,7 @@ package org.apache.hadoop.mapred;
 import java.io.DataInput;
 import java.io.DataOutput;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 
 import org.apache.commons.logging.Log;
@@ -27,6 +28,7 @@ import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.io.Writable;
 import org.apache.hadoop.io.WritableUtils;
+import org.apache.hadoop.mapreduce.EVStatistics;
 import org.apache.hadoop.util.StringUtils;
 /**************************************************
  * Describes the current status of a task.  This is
@@ -61,6 +63,8 @@ public abstract class TaskStatus implements Writable, Cloneable {
   private boolean includeCounters;
   private SortedRanges.Range nextRecordRange = new SortedRanges.Range();
 
+  private List<EVStatistics> evStats = new ArrayList<EVStatistics>();
+  
   public TaskStatus() {
     taskid = new TaskAttemptID();
     numSlots = 0;
@@ -466,5 +470,17 @@ public abstract class TaskStatus implements Writable, Cloneable {
     out.writeBoolean(taskStatus.getIsMap());
     taskStatus.write(out);
   }
+  
+  public void addEVStats(EVStatistics stat){
+	  evStats.add(stat);
+	}
+	  
+  public List<EVStatistics> getEVStats(){
+	  return evStats;
+  	}
+	  
+  public void clearEVStats(){
+	  evStats.clear();
+	}
 }
 

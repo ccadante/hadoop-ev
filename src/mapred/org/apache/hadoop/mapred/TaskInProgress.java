@@ -903,7 +903,6 @@ class TaskInProgress {
       this.state = bestState;
       this.counters = bestCounters;
     }
-	  LOG.warn("recomputeProgress: " + this.progress);
   }
 
   /////////////////////////////////////////////////
@@ -986,7 +985,6 @@ class TaskInProgress {
     // 1 slot is enough for taskCleanup task
     int numSlotsNeeded = taskCleanup ? 1 : numSlotsRequired;
     // create the task
-    LOG.warn("addRunningTask " + taskid.toString());
     Task t = null;
     if (isMapTask()) {
       if(LOG.isDebugEnabled()) {

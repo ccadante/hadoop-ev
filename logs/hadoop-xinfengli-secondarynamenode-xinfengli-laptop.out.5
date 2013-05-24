@@ -1,0 +1,9 @@
+java.io.IOException: Inconsistent checkpoint fileds. LV = -32 namespaceID = 344990132 cTime = 0. Expecting respectively: -32; 988745085; 0
+	at org.apache.hadoop.hdfs.server.namenode.CheckpointSignature.validateStorageInfo(CheckpointSignature.java:66)
+	at org.apache.hadoop.hdfs.server.namenode.SecondaryNameNode$CheckpointStorage.doMerge(SecondaryNameNode.java:673)
+	at org.apache.hadoop.hdfs.server.namenode.SecondaryNameNode$CheckpointStorage.access$500(SecondaryNameNode.java:571)
+	at org.apache.hadoop.hdfs.server.namenode.SecondaryNameNode.doMerge(SecondaryNameNode.java:448)
+	at org.apache.hadoop.hdfs.server.namenode.SecondaryNameNode.doCheckpoint(SecondaryNameNode.java:412)
+	at org.apache.hadoop.hdfs.server.namenode.SecondaryNameNode.doWork(SecondaryNameNode.java:312)
+	at org.apache.hadoop.hdfs.server.namenode.SecondaryNameNode.run(SecondaryNameNode.java:275)
+	at java.lang.Thread.run(Thread.java:722)

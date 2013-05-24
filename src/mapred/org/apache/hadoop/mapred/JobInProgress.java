@@ -49,6 +49,7 @@ import org.apache.hadoop.mapred.CleanupQueue.PathDeletionContext;
 import org.apache.hadoop.mapred.Counters.CountersExceededException;
 import org.apache.hadoop.mapred.Counters.Group;
 import org.apache.hadoop.mapred.JobHistory.Values;
+import org.apache.hadoop.mapreduce.EVStatistics;
 import org.apache.hadoop.mapreduce.JobContext;
 import org.apache.hadoop.mapreduce.JobSubmissionFiles;
 import org.apache.hadoop.mapreduce.TaskType;
@@ -87,7 +88,9 @@ public class JobInProgress {
   }
 
   static final Log LOG = LogFactory.getLog(JobInProgress.class);
-    
+
+  Set<EVStatistics> evStats = new HashSet<EVStatistics>();
+  
   JobProfile profile;
   JobStatus status;
   String jobFile = null;
@@ -719,7 +722,6 @@ public class JobInProgress {
     maps = new TaskInProgress[numMapTasks];
     for(int i=0; i < numMapTasks; ++i) {
       inputLength += splits[i].getInputDataLength();
-      LOG.warn("Init new Map tasks.");
       maps[i] = new TaskInProgress(jobId, jobFile, 
                                    splits[i], 
                                    jobtracker, conf, this, i, numSlotsPerMap);
@@ -3565,5 +3567,14 @@ public class JobInProgress {
       }
     }
     return level;
+  }
+  
+  public void updateEVStats(TaskStatus report) {
+	  
+	  List<EVStatistics> subEVStats = report.getEVStats();
+	  for(int i=0; i<subEVStats.size(); i++){
+	  	evStats.add(subEVStats.get(i));
+	  }
+	  LOG.warn("updateEVStats: " + report.getTaskID() + " size = " + evStats.size());
   }
 }

@@ -21,11 +21,15 @@ package org.apache.hadoop.streaming;
 import java.io.*;
 import java.lang.reflect.*;
 
+import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.hadoop.io.Text;
+import org.apache.hadoop.mapred.JobConf;
+import org.apache.hadoop.mapred.Reporter;
+import org.apache.hadoop.mapreduce.*;
+import org.apache.hadoop.mapreduce.lib.input.*;
 
-import org.apache.hadoop.mapred.*;
 
 /** An input format that selects a RecordReader based on a JobConf property.
  *  This should be used only for non-standard record reader such as 
@@ -34,28 +38,30 @@ import org.apache.hadoop.mapred.*;
  */
 public class StreamInputFormat extends KeyValueTextInputFormat {
 
-  @SuppressWarnings("unchecked")
-  public RecordReader<Text, Text> getRecordReader(final InputSplit genericSplit,
-                                      JobConf job, Reporter reporter) throws IOException {
-    String c = job.get("stream.recordreader.class");
+  public RecordReader<Text, Text> createRecordReader(InputSplit genericSplit,
+	      TaskAttemptContext context) throws IOException {
+	  Configuration conf = context.getConfiguration();
+	  
+    String c = conf.get("stream.recordreader.class");
     if (c == null || c.indexOf("LineRecordReader") >= 0) {
-      return super.getRecordReader(genericSplit, job, reporter);
+      return super.createRecordReader(genericSplit, context);
     }
 
     // handling non-standard record reader (likely StreamXmlRecordReader) 
     FileSplit split = (FileSplit) genericSplit;
-    LOG.info("getRecordReader start.....split=" + split);
-    reporter.setStatus(split.toString());
-
+    //LOG.info("getRecordReader start.....split=" + split);
+    context.setStatus(split.toString());
+    context.progress();
+    
     // Open the file and seek to the start of the split
-    FileSystem fs = split.getPath().getFileSystem(job);
+    FileSystem fs = split.getPath().getFileSystem(conf);
     FSDataInputStream in = fs.open(split.getPath());
 
     // Factory dispatch based on available params..
     Class readerClass;
 
     {
-      readerClass = StreamUtil.goodClassOrNull(job, c, null);
+      readerClass = StreamUtil.goodClassOrNull(conf, c, null);
       if (readerClass == null) {
         throw new RuntimeException("Class not found: " + c);
       }
@@ -63,20 +69,21 @@ public class StreamInputFormat extends KeyValueTextInputFormat {
 
     Constructor ctor;
     try {
-      ctor = readerClass.getConstructor(new Class[] { FSDataInputStream.class,
-                                                      FileSplit.class, Reporter.class, JobConf.class, FileSystem.class });
-    } catch (NoSuchMethodException nsm) {
-      throw new RuntimeException(nsm);
-    }
+        ctor = readerClass.getConstructor(new Class[] { FSDataInputStream.class,
+            FileSplit.class, TaskAttemptContext.class, Configuration.class,
+            FileSystem.class });
+      } catch (NoSuchMethodException nsm) {
+        throw new RuntimeException(nsm);
+      }
 
-    RecordReader<Text, Text> reader;
-    try {
-      reader = (RecordReader<Text, Text>) ctor.newInstance(new Object[] { in, split,
-                                                              reporter, job, fs });
-    } catch (Exception nsm) {
-      throw new RuntimeException(nsm);
-    }
-    return reader;
+      RecordReader<Text, Text> reader;
+      try {
+        reader = (RecordReader<Text, Text>) ctor.newInstance(new Object[] { in,
+            split, context, conf, fs });
+      } catch (Exception nsm) {
+        throw new RuntimeException(nsm);
+      }
+      return reader;
   }
 
 }

@@ -132,7 +132,7 @@ public class Mapper<KEYIN, VALUEIN, KEYOUT, VALUEOUT> {
     public void addStat(long time){
     	if(myEVStat == null)
     		myEVStat = new EVStatistics();
-    	myEVStat.addTimeStat(new StatsType(
+    	myEVStat.addTimeStat(myEVStat.new StatsType(
     			lastKeyIn.getClass().getName(), lastKeyIn.toString()), time);
     }
     

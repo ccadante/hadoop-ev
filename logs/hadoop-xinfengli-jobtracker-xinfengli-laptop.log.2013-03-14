@@ -1,0 +1,497 @@
+2013-03-14 01:07:59,529 INFO org.apache.hadoop.mapred.JobTracker: SHUTDOWN_MSG: 
+/************************************************************
+SHUTDOWN_MSG: Shutting down JobTracker at xinfengli-laptop/127.0.1.1
+************************************************************/
+2013-03-14 14:59:15,841 INFO org.apache.hadoop.mapred.JobTracker: STARTUP_MSG: 
+/************************************************************
+STARTUP_MSG: Starting JobTracker
+STARTUP_MSG:   host = xinfengli-laptop/127.0.1.1
+STARTUP_MSG:   args = []
+STARTUP_MSG:   version = 1.0.4-SNAPSHOT
+STARTUP_MSG:   build =  -r ; compiled by 'xinfengli' on Wed Mar 13 22:02:29 EDT 2013
+************************************************************/
+2013-03-14 14:59:16,061 INFO org.apache.hadoop.metrics2.impl.MetricsConfig: loaded properties from hadoop-metrics2.properties
+2013-03-14 14:59:16,082 INFO org.apache.hadoop.metrics2.impl.MetricsSourceAdapter: MBean for source MetricsSystem,sub=Stats registered.
+2013-03-14 14:59:16,094 INFO org.apache.hadoop.metrics2.impl.MetricsSystemImpl: Scheduled snapshot period at 10 second(s).
+2013-03-14 14:59:16,094 INFO org.apache.hadoop.metrics2.impl.MetricsSystemImpl: JobTracker metrics system started
+2013-03-14 14:59:16,316 INFO org.apache.hadoop.metrics2.impl.MetricsSourceAdapter: MBean for source QueueMetrics,q=default registered.
+2013-03-14 14:59:16,889 INFO org.apache.hadoop.metrics2.impl.MetricsSourceAdapter: MBean for source ugi registered.
+2013-03-14 14:59:16,890 WARN org.apache.hadoop.metrics2.impl.MetricsSystemImpl: Source name ugi already exists!
+2013-03-14 14:59:16,891 INFO org.apache.hadoop.security.token.delegation.AbstractDelegationTokenSecretManager: Updating the current master key for generating delegation tokens
+2013-03-14 14:59:16,907 INFO org.apache.hadoop.mapred.JobTracker: Scheduler configured with (memSizeForMapSlotOnJT, memSizeForReduceSlotOnJT, limitMaxMemForMapTasks, limitMaxMemForReduceTasks) (-1, -1, -1, -1)
+2013-03-14 14:59:16,908 INFO org.apache.hadoop.security.token.delegation.AbstractDelegationTokenSecretManager: Starting expired delegation token remover thread, tokenRemoverScanInterval=60 min(s)
+2013-03-14 14:59:16,908 INFO org.apache.hadoop.util.HostsFileReader: Refreshing hosts (include/exclude) list
+2013-03-14 14:59:16,909 INFO org.apache.hadoop.security.token.delegation.AbstractDelegationTokenSecretManager: Updating the current master key for generating delegation tokens
+2013-03-14 14:59:16,926 INFO org.apache.hadoop.mapred.JobTracker: Starting jobtracker with owner as xinfengli
+2013-03-14 14:59:17,011 INFO org.apache.hadoop.ipc.Server: Starting SocketReader
+2013-03-14 14:59:17,047 INFO org.apache.hadoop.metrics2.impl.MetricsSourceAdapter: MBean for source RpcDetailedActivityForPort9001 registered.
+2013-03-14 14:59:17,047 INFO org.apache.hadoop.metrics2.impl.MetricsSourceAdapter: MBean for source RpcActivityForPort9001 registered.
+2013-03-14 14:59:22,334 INFO org.mortbay.log: Logging to org.slf4j.impl.Log4jLoggerAdapter(org.mortbay.log) via org.mortbay.log.Slf4jLog
+2013-03-14 14:59:22,412 INFO org.apache.hadoop.http.HttpServer: Added global filtersafety (class=org.apache.hadoop.http.HttpServer$QuotingInputFilter)
+2013-03-14 14:59:22,560 INFO org.apache.hadoop.http.HttpServer: Port returned by webServer.getConnectors()[0].getLocalPort() before open() is -1. Opening the listener on 50030
+2013-03-14 14:59:22,562 INFO org.apache.hadoop.http.HttpServer: listener.getLocalPort() returned 50030 webServer.getConnectors()[0].getLocalPort() returned 50030
+2013-03-14 14:59:22,562 INFO org.apache.hadoop.http.HttpServer: Jetty bound to port 50030
+2013-03-14 14:59:22,562 INFO org.mortbay.log: jetty-6.1.26
+2013-03-14 14:59:23,106 INFO org.mortbay.log: Started SelectChannelConnector@0.0.0.0:50030
+2013-03-14 14:59:23,144 INFO org.apache.hadoop.metrics2.impl.MetricsSourceAdapter: MBean for source jvm registered.
+2013-03-14 14:59:23,145 INFO org.apache.hadoop.metrics2.impl.MetricsSourceAdapter: MBean for source JobTrackerMetrics registered.
+2013-03-14 14:59:23,146 INFO org.apache.hadoop.mapred.JobTracker: JobTracker up at: 9001
+2013-03-14 14:59:23,146 INFO org.apache.hadoop.mapred.JobTracker: JobTracker webserver: 50030
+2013-03-14 14:59:24,399 INFO org.apache.hadoop.ipc.Client: Retrying connect to server: localhost/127.0.0.1:9000. Already tried 0 time(s).
+2013-03-14 14:59:25,400 INFO org.apache.hadoop.ipc.Client: Retrying connect to server: localhost/127.0.0.1:9000. Already tried 1 time(s).
+2013-03-14 14:59:26,401 INFO org.apache.hadoop.ipc.Client: Retrying connect to server: localhost/127.0.0.1:9000. Already tried 2 time(s).
+2013-03-14 14:59:27,402 INFO org.apache.hadoop.ipc.Client: Retrying connect to server: localhost/127.0.0.1:9000. Already tried 3 time(s).
+2013-03-14 14:59:28,157 INFO org.apache.hadoop.mapred.JobTracker: SHUTDOWN_MSG: 
+/************************************************************
+SHUTDOWN_MSG: Shutting down JobTracker at xinfengli-laptop/127.0.1.1
+************************************************************/
+2013-03-14 14:59:37,699 INFO org.apache.hadoop.mapred.JobTracker: STARTUP_MSG: 
+/************************************************************
+STARTUP_MSG: Starting JobTracker
+STARTUP_MSG:   host = xinfengli-laptop/127.0.1.1
+STARTUP_MSG:   args = []
+STARTUP_MSG:   version = 1.0.4-SNAPSHOT
+STARTUP_MSG:   build =  -r ; compiled by 'xinfengli' on Wed Mar 13 22:02:29 EDT 2013
+************************************************************/
+2013-03-14 14:59:37,922 INFO org.apache.hadoop.metrics2.impl.MetricsConfig: loaded properties from hadoop-metrics2.properties
+2013-03-14 14:59:37,952 INFO org.apache.hadoop.metrics2.impl.MetricsSourceAdapter: MBean for source MetricsSystem,sub=Stats registered.
+2013-03-14 14:59:37,953 INFO org.apache.hadoop.metrics2.impl.MetricsSystemImpl: Scheduled snapshot period at 10 second(s).
+2013-03-14 14:59:37,953 INFO org.apache.hadoop.metrics2.impl.MetricsSystemImpl: JobTracker metrics system started
+2013-03-14 14:59:38,112 INFO org.apache.hadoop.metrics2.impl.MetricsSourceAdapter: MBean for source QueueMetrics,q=default registered.
+2013-03-14 14:59:38,735 INFO org.apache.hadoop.metrics2.impl.MetricsSourceAdapter: MBean for source ugi registered.
+2013-03-14 14:59:38,736 WARN org.apache.hadoop.metrics2.impl.MetricsSystemImpl: Source name ugi already exists!
+2013-03-14 14:59:38,743 INFO org.apache.hadoop.security.token.delegation.AbstractDelegationTokenSecretManager: Updating the current master key for generating delegation tokens
+2013-03-14 14:59:38,747 INFO org.apache.hadoop.mapred.JobTracker: Scheduler configured with (memSizeForMapSlotOnJT, memSizeForReduceSlotOnJT, limitMaxMemForMapTasks, limitMaxMemForReduceTasks) (-1, -1, -1, -1)
+2013-03-14 14:59:38,748 INFO org.apache.hadoop.util.HostsFileReader: Refreshing hosts (include/exclude) list
+2013-03-14 14:59:38,751 INFO org.apache.hadoop.security.token.delegation.AbstractDelegationTokenSecretManager: Starting expired delegation token remover thread, tokenRemoverScanInterval=60 min(s)
+2013-03-14 14:59:38,751 INFO org.apache.hadoop.security.token.delegation.AbstractDelegationTokenSecretManager: Updating the current master key for generating delegation tokens
+2013-03-14 14:59:38,766 INFO org.apache.hadoop.mapred.JobTracker: Starting jobtracker with owner as xinfengli
+2013-03-14 14:59:38,804 INFO org.apache.hadoop.metrics2.impl.MetricsSourceAdapter: MBean for source RpcDetailedActivityForPort9001 registered.
+2013-03-14 14:59:38,804 INFO org.apache.hadoop.metrics2.impl.MetricsSourceAdapter: MBean for source RpcActivityForPort9001 registered.
+2013-03-14 14:59:38,807 INFO org.apache.hadoop.ipc.Server: Starting SocketReader
+2013-03-14 14:59:43,897 INFO org.mortbay.log: Logging to org.slf4j.impl.Log4jLoggerAdapter(org.mortbay.log) via org.mortbay.log.Slf4jLog
+2013-03-14 14:59:43,963 INFO org.apache.hadoop.http.HttpServer: Added global filtersafety (class=org.apache.hadoop.http.HttpServer$QuotingInputFilter)
+2013-03-14 14:59:43,995 INFO org.apache.hadoop.http.HttpServer: Port returned by webServer.getConnectors()[0].getLocalPort() before open() is -1. Opening the listener on 50030
+2013-03-14 14:59:43,996 INFO org.apache.hadoop.http.HttpServer: listener.getLocalPort() returned 50030 webServer.getConnectors()[0].getLocalPort() returned 50030
+2013-03-14 14:59:43,996 INFO org.apache.hadoop.http.HttpServer: Jetty bound to port 50030
+2013-03-14 14:59:43,996 INFO org.mortbay.log: jetty-6.1.26
+2013-03-14 14:59:44,418 INFO org.mortbay.log: Started SelectChannelConnector@0.0.0.0:50030
+2013-03-14 14:59:44,427 INFO org.apache.hadoop.metrics2.impl.MetricsSourceAdapter: MBean for source jvm registered.
+2013-03-14 14:59:44,427 INFO org.apache.hadoop.metrics2.impl.MetricsSourceAdapter: MBean for source JobTrackerMetrics registered.
+2013-03-14 14:59:44,428 INFO org.apache.hadoop.mapred.JobTracker: JobTracker up at: 9001
+2013-03-14 14:59:44,428 INFO org.apache.hadoop.mapred.JobTracker: JobTracker webserver: 50030
+2013-03-14 14:59:45,514 INFO org.apache.hadoop.ipc.Client: Retrying connect to server: localhost/127.0.0.1:9000. Already tried 0 time(s).
+2013-03-14 14:59:46,514 INFO org.apache.hadoop.ipc.Client: Retrying connect to server: localhost/127.0.0.1:9000. Already tried 1 time(s).
+2013-03-14 14:59:47,515 INFO org.apache.hadoop.ipc.Client: Retrying connect to server: localhost/127.0.0.1:9000. Already tried 2 time(s).
+2013-03-14 14:59:48,516 INFO org.apache.hadoop.ipc.Client: Retrying connect to server: localhost/127.0.0.1:9000. Already tried 3 time(s).
+2013-03-14 14:59:49,517 INFO org.apache.hadoop.ipc.Client: Retrying connect to server: localhost/127.0.0.1:9000. Already tried 4 time(s).
+2013-03-14 14:59:50,518 INFO org.apache.hadoop.ipc.Client: Retrying connect to server: localhost/127.0.0.1:9000. Already tried 5 time(s).
+2013-03-14 14:59:51,519 INFO org.apache.hadoop.ipc.Client: Retrying connect to server: localhost/127.0.0.1:9000. Already tried 6 time(s).
+2013-03-14 14:59:52,520 INFO org.apache.hadoop.ipc.Client: Retrying connect to server: localhost/127.0.0.1:9000. Already tried 7 time(s).
+2013-03-14 14:59:53,522 INFO org.apache.hadoop.ipc.Client: Retrying connect to server: localhost/127.0.0.1:9000. Already tried 8 time(s).
+2013-03-14 14:59:54,523 INFO org.apache.hadoop.ipc.Client: Retrying connect to server: localhost/127.0.0.1:9000. Already tried 9 time(s).
+2013-03-14 14:59:54,527 ERROR org.apache.hadoop.security.UserGroupInformation: PriviledgedActionException as:xinfengli cause:java.net.ConnectException: Call to localhost/127.0.0.1:9000 failed on connection exception: java.net.ConnectException: Connection refused
+2013-03-14 14:59:54,529 INFO org.apache.hadoop.mapred.JobTracker: problem cleaning system directory: null
+java.net.ConnectException: Call to localhost/127.0.0.1:9000 failed on connection exception: java.net.ConnectException: Connection refused
+	at org.apache.hadoop.ipc.Client.wrapException(Client.java:1099)
+	at org.apache.hadoop.ipc.Client.call(Client.java:1075)
+	at org.apache.hadoop.ipc.RPC$Invoker.invoke(RPC.java:225)
+	at $Proxy5.getProtocolVersion(Unknown Source)
+	at org.apache.hadoop.ipc.RPC.getProxy(RPC.java:396)
+	at org.apache.hadoop.ipc.RPC.getProxy(RPC.java:379)
+	at org.apache.hadoop.hdfs.DFSClient.createRPCNamenode(DFSClient.java:119)
+	at org.apache.hadoop.hdfs.DFSClient.<init>(DFSClient.java:238)
+	at org.apache.hadoop.hdfs.DFSClient.<init>(DFSClient.java:203)
+	at org.apache.hadoop.hdfs.DistributedFileSystem.initialize(DistributedFileSystem.java:89)
+	at org.apache.hadoop.fs.FileSystem.createFileSystem(FileSystem.java:1386)
+	at org.apache.hadoop.fs.FileSystem.access$200(FileSystem.java:66)
+	at org.apache.hadoop.fs.FileSystem$Cache.get(FileSystem.java:1404)
+	at org.apache.hadoop.fs.FileSystem.get(FileSystem.java:254)
+	at org.apache.hadoop.fs.FileSystem.get(FileSystem.java:123)
+	at org.apache.hadoop.mapred.JobTracker$3.run(JobTracker.java:2367)
+	at org.apache.hadoop.mapred.JobTracker$3.run(JobTracker.java:2365)
+	at java.security.AccessController.doPrivileged(Native Method)
+	at javax.security.auth.Subject.doAs(Subject.java:415)
+	at org.apache.hadoop.security.UserGroupInformation.doAs(UserGroupInformation.java:1121)
+	at org.apache.hadoop.mapred.JobTracker.<init>(JobTracker.java:2365)
+	at org.apache.hadoop.mapred.JobTracker.<init>(JobTracker.java:2192)
+	at org.apache.hadoop.mapred.JobTracker.<init>(JobTracker.java:2186)
+	at org.apache.hadoop.mapred.JobTracker.startTracker(JobTracker.java:300)
+	at org.apache.hadoop.mapred.JobTracker.startTracker(JobTracker.java:291)
+	at org.apache.hadoop.mapred.JobTracker.main(JobTracker.java:4978)
+Caused by: java.net.ConnectException: Connection refused
+	at sun.nio.ch.SocketChannelImpl.checkConnect(Native Method)
+	at sun.nio.ch.SocketChannelImpl.finishConnect(SocketChannelImpl.java:701)
+	at org.apache.hadoop.net.SocketIOWithTimeout.connect(SocketIOWithTimeout.java:206)
+	at org.apache.hadoop.net.NetUtils.connect(NetUtils.java:489)
+	at org.apache.hadoop.ipc.Client$Connection.setupConnection(Client.java:434)
+	at org.apache.hadoop.ipc.Client$Connection.setupIOstreams(Client.java:560)
+	at org.apache.hadoop.ipc.Client$Connection.access$2000(Client.java:184)
+	at org.apache.hadoop.ipc.Client.getConnection(Client.java:1206)
+	at org.apache.hadoop.ipc.Client.call(Client.java:1050)
+	... 24 more
+2013-03-14 15:00:05,536 INFO org.apache.hadoop.ipc.Client: Retrying connect to server: localhost/127.0.0.1:9000. Already tried 0 time(s).
+2013-03-14 15:00:06,536 INFO org.apache.hadoop.ipc.Client: Retrying connect to server: localhost/127.0.0.1:9000. Already tried 1 time(s).
+2013-03-14 15:00:07,538 INFO org.apache.hadoop.ipc.Client: Retrying connect to server: localhost/127.0.0.1:9000. Already tried 2 time(s).
+2013-03-14 15:00:08,539 INFO org.apache.hadoop.ipc.Client: Retrying connect to server: localhost/127.0.0.1:9000. Already tried 3 time(s).
+2013-03-14 15:00:09,540 INFO org.apache.hadoop.ipc.Client: Retrying connect to server: localhost/127.0.0.1:9000. Already tried 4 time(s).
+2013-03-14 15:00:10,542 INFO org.apache.hadoop.ipc.Client: Retrying connect to server: localhost/127.0.0.1:9000. Already tried 5 time(s).
+2013-03-14 15:00:11,543 INFO org.apache.hadoop.ipc.Client: Retrying connect to server: localhost/127.0.0.1:9000. Already tried 6 time(s).
+2013-03-14 15:00:12,544 INFO org.apache.hadoop.ipc.Client: Retrying connect to server: localhost/127.0.0.1:9000. Already tried 7 time(s).
+2013-03-14 15:00:13,545 INFO org.apache.hadoop.ipc.Client: Retrying connect to server: localhost/127.0.0.1:9000. Already tried 8 time(s).
+2013-03-14 15:00:14,546 INFO org.apache.hadoop.ipc.Client: Retrying connect to server: localhost/127.0.0.1:9000. Already tried 9 time(s).
+2013-03-14 15:00:14,548 ERROR org.apache.hadoop.security.UserGroupInformation: PriviledgedActionException as:xinfengli cause:java.net.ConnectException: Call to localhost/127.0.0.1:9000 failed on connection exception: java.net.ConnectException: Connection refused
+2013-03-14 15:00:14,548 INFO org.apache.hadoop.mapred.JobTracker: problem cleaning system directory: null
+java.net.ConnectException: Call to localhost/127.0.0.1:9000 failed on connection exception: java.net.ConnectException: Connection refused
+	at org.apache.hadoop.ipc.Client.wrapException(Client.java:1099)
+	at org.apache.hadoop.ipc.Client.call(Client.java:1075)
+	at org.apache.hadoop.ipc.RPC$Invoker.invoke(RPC.java:225)
+	at $Proxy5.getProtocolVersion(Unknown Source)
+	at org.apache.hadoop.ipc.RPC.getProxy(RPC.java:396)
+	at org.apache.hadoop.ipc.RPC.getProxy(RPC.java:379)
+	at org.apache.hadoop.hdfs.DFSClient.createRPCNamenode(DFSClient.java:119)
+	at org.apache.hadoop.hdfs.DFSClient.<init>(DFSClient.java:238)
+	at org.apache.hadoop.hdfs.DFSClient.<init>(DFSClient.java:203)
+	at org.apache.hadoop.hdfs.DistributedFileSystem.initialize(DistributedFileSystem.java:89)
+	at org.apache.hadoop.fs.FileSystem.createFileSystem(FileSystem.java:1386)
+	at org.apache.hadoop.fs.FileSystem.access$200(FileSystem.java:66)
+	at org.apache.hadoop.fs.FileSystem$Cache.get(FileSystem.java:1404)
+	at org.apache.hadoop.fs.FileSystem.get(FileSystem.java:254)
+	at org.apache.hadoop.fs.FileSystem.get(FileSystem.java:123)
+	at org.apache.hadoop.mapred.JobTracker$3.run(JobTracker.java:2367)
+	at org.apache.hadoop.mapred.JobTracker$3.run(JobTracker.java:2365)
+	at java.security.AccessController.doPrivileged(Native Method)
+	at javax.security.auth.Subject.doAs(Subject.java:415)
+	at org.apache.hadoop.security.UserGroupInformation.doAs(UserGroupInformation.java:1121)
+	at org.apache.hadoop.mapred.JobTracker.<init>(JobTracker.java:2365)
+	at org.apache.hadoop.mapred.JobTracker.<init>(JobTracker.java:2192)
+	at org.apache.hadoop.mapred.JobTracker.<init>(JobTracker.java:2186)
+	at org.apache.hadoop.mapred.JobTracker.startTracker(JobTracker.java:300)
+	at org.apache.hadoop.mapred.JobTracker.startTracker(JobTracker.java:291)
+	at org.apache.hadoop.mapred.JobTracker.main(JobTracker.java:4978)
+Caused by: java.net.ConnectException: Connection refused
+	at sun.nio.ch.SocketChannelImpl.checkConnect(Native Method)
+	at sun.nio.ch.SocketChannelImpl.finishConnect(SocketChannelImpl.java:701)
+	at org.apache.hadoop.net.SocketIOWithTimeout.connect(SocketIOWithTimeout.java:206)
+	at org.apache.hadoop.net.NetUtils.connect(NetUtils.java:489)
+	at org.apache.hadoop.ipc.Client$Connection.setupConnection(Client.java:434)
+	at org.apache.hadoop.ipc.Client$Connection.setupIOstreams(Client.java:560)
+	at org.apache.hadoop.ipc.Client$Connection.access$2000(Client.java:184)
+	at org.apache.hadoop.ipc.Client.getConnection(Client.java:1206)
+	at org.apache.hadoop.ipc.Client.call(Client.java:1050)
+	... 24 more
+2013-03-14 15:00:25,559 INFO org.apache.hadoop.ipc.Client: Retrying connect to server: localhost/127.0.0.1:9000. Already tried 0 time(s).
+2013-03-14 15:00:26,560 INFO org.apache.hadoop.ipc.Client: Retrying connect to server: localhost/127.0.0.1:9000. Already tried 1 time(s).
+2013-03-14 15:00:27,561 INFO org.apache.hadoop.ipc.Client: Retrying connect to server: localhost/127.0.0.1:9000. Already tried 2 time(s).
+2013-03-14 15:00:28,562 INFO org.apache.hadoop.ipc.Client: Retrying connect to server: localhost/127.0.0.1:9000. Already tried 3 time(s).
+2013-03-14 15:00:29,564 INFO org.apache.hadoop.ipc.Client: Retrying connect to server: localhost/127.0.0.1:9000. Already tried 4 time(s).
+2013-03-14 15:00:30,565 INFO org.apache.hadoop.ipc.Client: Retrying connect to server: localhost/127.0.0.1:9000. Already tried 5 time(s).
+2013-03-14 15:00:31,566 INFO org.apache.hadoop.ipc.Client: Retrying connect to server: localhost/127.0.0.1:9000. Already tried 6 time(s).
+2013-03-14 15:00:32,567 INFO org.apache.hadoop.ipc.Client: Retrying connect to server: localhost/127.0.0.1:9000. Already tried 7 time(s).
+2013-03-14 15:00:33,568 INFO org.apache.hadoop.ipc.Client: Retrying connect to server: localhost/127.0.0.1:9000. Already tried 8 time(s).
+2013-03-14 15:00:34,569 INFO org.apache.hadoop.ipc.Client: Retrying connect to server: localhost/127.0.0.1:9000. Already tried 9 time(s).
+2013-03-14 15:00:34,570 ERROR org.apache.hadoop.security.UserGroupInformation: PriviledgedActionException as:xinfengli cause:java.net.ConnectException: Call to localhost/127.0.0.1:9000 failed on connection exception: java.net.ConnectException: Connection refused
+2013-03-14 15:00:34,571 INFO org.apache.hadoop.mapred.JobTracker: problem cleaning system directory: null
+java.net.ConnectException: Call to localhost/127.0.0.1:9000 failed on connection exception: java.net.ConnectException: Connection refused
+	at org.apache.hadoop.ipc.Client.wrapException(Client.java:1099)
+	at org.apache.hadoop.ipc.Client.call(Client.java:1075)
+	at org.apache.hadoop.ipc.RPC$Invoker.invoke(RPC.java:225)
+	at $Proxy5.getProtocolVersion(Unknown Source)
+	at org.apache.hadoop.ipc.RPC.getProxy(RPC.java:396)
+	at org.apache.hadoop.ipc.RPC.getProxy(RPC.java:379)
+	at org.apache.hadoop.hdfs.DFSClient.createRPCNamenode(DFSClient.java:119)
+	at org.apache.hadoop.hdfs.DFSClient.<init>(DFSClient.java:238)
+	at org.apache.hadoop.hdfs.DFSClient.<init>(DFSClient.java:203)
+	at org.apache.hadoop.hdfs.DistributedFileSystem.initialize(DistributedFileSystem.java:89)
+	at org.apache.hadoop.fs.FileSystem.createFileSystem(FileSystem.java:1386)
+	at org.apache.hadoop.fs.FileSystem.access$200(FileSystem.java:66)
+	at org.apache.hadoop.fs.FileSystem$Cache.get(FileSystem.java:1404)
+	at org.apache.hadoop.fs.FileSystem.get(FileSystem.java:254)
+	at org.apache.hadoop.fs.FileSystem.get(FileSystem.java:123)
+	at org.apache.hadoop.mapred.JobTracker$3.run(JobTracker.java:2367)
+	at org.apache.hadoop.mapred.JobTracker$3.run(JobTracker.java:2365)
+	at java.security.AccessController.doPrivileged(Native Method)
+	at javax.security.auth.Subject.doAs(Subject.java:415)
+	at org.apache.hadoop.security.UserGroupInformation.doAs(UserGroupInformation.java:1121)
+	at org.apache.hadoop.mapred.JobTracker.<init>(JobTracker.java:2365)
+	at org.apache.hadoop.mapred.JobTracker.<init>(JobTracker.java:2192)
+	at org.apache.hadoop.mapred.JobTracker.<init>(JobTracker.java:2186)
+	at org.apache.hadoop.mapred.JobTracker.startTracker(JobTracker.java:300)
+	at org.apache.hadoop.mapred.JobTracker.startTracker(JobTracker.java:291)
+	at org.apache.hadoop.mapred.JobTracker.main(JobTracker.java:4978)
+Caused by: java.net.ConnectException: Connection refused
+	at sun.nio.ch.SocketChannelImpl.checkConnect(Native Method)
+	at sun.nio.ch.SocketChannelImpl.finishConnect(SocketChannelImpl.java:701)
+	at org.apache.hadoop.net.SocketIOWithTimeout.connect(SocketIOWithTimeout.java:206)
+	at org.apache.hadoop.net.NetUtils.connect(NetUtils.java:489)
+	at org.apache.hadoop.ipc.Client$Connection.setupConnection(Client.java:434)
+	at org.apache.hadoop.ipc.Client$Connection.setupIOstreams(Client.java:560)
+	at org.apache.hadoop.ipc.Client$Connection.access$2000(Client.java:184)
+	at org.apache.hadoop.ipc.Client.getConnection(Client.java:1206)
+	at org.apache.hadoop.ipc.Client.call(Client.java:1050)
+	... 24 more
+2013-03-14 15:00:45,577 INFO org.apache.hadoop.ipc.Client: Retrying connect to server: localhost/127.0.0.1:9000. Already tried 0 time(s).
+2013-03-14 15:00:46,578 INFO org.apache.hadoop.ipc.Client: Retrying connect to server: localhost/127.0.0.1:9000. Already tried 1 time(s).
+2013-03-14 15:00:47,579 INFO org.apache.hadoop.ipc.Client: Retrying connect to server: localhost/127.0.0.1:9000. Already tried 2 time(s).
+2013-03-14 15:00:48,580 INFO org.apache.hadoop.ipc.Client: Retrying connect to server: localhost/127.0.0.1:9000. Already tried 3 time(s).
+2013-03-14 15:00:49,581 INFO org.apache.hadoop.ipc.Client: Retrying connect to server: localhost/127.0.0.1:9000. Already tried 4 time(s).
+2013-03-14 15:00:50,582 INFO org.apache.hadoop.ipc.Client: Retrying connect to server: localhost/127.0.0.1:9000. Already tried 5 time(s).
+2013-03-14 15:00:51,583 INFO org.apache.hadoop.ipc.Client: Retrying connect to server: localhost/127.0.0.1:9000. Already tried 6 time(s).
+2013-03-14 15:00:52,584 INFO org.apache.hadoop.ipc.Client: Retrying connect to server: localhost/127.0.0.1:9000. Already tried 7 time(s).
+2013-03-14 15:00:53,585 INFO org.apache.hadoop.ipc.Client: Retrying connect to server: localhost/127.0.0.1:9000. Already tried 8 time(s).
+2013-03-14 15:00:54,586 INFO org.apache.hadoop.ipc.Client: Retrying connect to server: localhost/127.0.0.1:9000. Already tried 9 time(s).
+2013-03-14 15:00:54,587 ERROR org.apache.hadoop.security.UserGroupInformation: PriviledgedActionException as:xinfengli cause:java.net.ConnectException: Call to localhost/127.0.0.1:9000 failed on connection exception: java.net.ConnectException: Connection refused
+2013-03-14 15:00:54,588 INFO org.apache.hadoop.mapred.JobTracker: problem cleaning system directory: null
+java.net.ConnectException: Call to localhost/127.0.0.1:9000 failed on connection exception: java.net.ConnectException: Connection refused
+	at org.apache.hadoop.ipc.Client.wrapException(Client.java:1099)
+	at org.apache.hadoop.ipc.Client.call(Client.java:1075)
+	at org.apache.hadoop.ipc.RPC$Invoker.invoke(RPC.java:225)
+	at $Proxy5.getProtocolVersion(Unknown Source)
+	at org.apache.hadoop.ipc.RPC.getProxy(RPC.java:396)
+	at org.apache.hadoop.ipc.RPC.getProxy(RPC.java:379)
+	at org.apache.hadoop.hdfs.DFSClient.createRPCNamenode(DFSClient.java:119)
+	at org.apache.hadoop.hdfs.DFSClient.<init>(DFSClient.java:238)
+	at org.apache.hadoop.hdfs.DFSClient.<init>(DFSClient.java:203)
+	at org.apache.hadoop.hdfs.DistributedFileSystem.initialize(DistributedFileSystem.java:89)
+	at org.apache.hadoop.fs.FileSystem.createFileSystem(FileSystem.java:1386)
+	at org.apache.hadoop.fs.FileSystem.access$200(FileSystem.java:66)
+	at org.apache.hadoop.fs.FileSystem$Cache.get(FileSystem.java:1404)
+	at org.apache.hadoop.fs.FileSystem.get(FileSystem.java:254)
+	at org.apache.hadoop.fs.FileSystem.get(FileSystem.java:123)
+	at org.apache.hadoop.mapred.JobTracker$3.run(JobTracker.java:2367)
+	at org.apache.hadoop.mapred.JobTracker$3.run(JobTracker.java:2365)
+	at java.security.AccessController.doPrivileged(Native Method)
+	at javax.security.auth.Subject.doAs(Subject.java:415)
+	at org.apache.hadoop.security.UserGroupInformation.doAs(UserGroupInformation.java:1121)
+	at org.apache.hadoop.mapred.JobTracker.<init>(JobTracker.java:2365)
+	at org.apache.hadoop.mapred.JobTracker.<init>(JobTracker.java:2192)
+	at org.apache.hadoop.mapred.JobTracker.<init>(JobTracker.java:2186)
+	at org.apache.hadoop.mapred.JobTracker.startTracker(JobTracker.java:300)
+	at org.apache.hadoop.mapred.JobTracker.startTracker(JobTracker.java:291)
+	at org.apache.hadoop.mapred.JobTracker.main(JobTracker.java:4978)
+Caused by: java.net.ConnectException: Connection refused
+	at sun.nio.ch.SocketChannelImpl.checkConnect(Native Method)
+	at sun.nio.ch.SocketChannelImpl.finishConnect(SocketChannelImpl.java:701)
+	at org.apache.hadoop.net.SocketIOWithTimeout.connect(SocketIOWithTimeout.java:206)
+	at org.apache.hadoop.net.NetUtils.connect(NetUtils.java:489)
+	at org.apache.hadoop.ipc.Client$Connection.setupConnection(Client.java:434)
+	at org.apache.hadoop.ipc.Client$Connection.setupIOstreams(Client.java:560)
+	at org.apache.hadoop.ipc.Client$Connection.access$2000(Client.java:184)
+	at org.apache.hadoop.ipc.Client.getConnection(Client.java:1206)
+	at org.apache.hadoop.ipc.Client.call(Client.java:1050)
+	... 24 more
+2013-03-14 15:01:05,594 INFO org.apache.hadoop.ipc.Client: Retrying connect to server: localhost/127.0.0.1:9000. Already tried 0 time(s).
+2013-03-14 15:01:06,595 INFO org.apache.hadoop.ipc.Client: Retrying connect to server: localhost/127.0.0.1:9000. Already tried 1 time(s).
+2013-03-14 15:01:07,596 INFO org.apache.hadoop.ipc.Client: Retrying connect to server: localhost/127.0.0.1:9000. Already tried 2 time(s).
+2013-03-14 15:01:08,597 INFO org.apache.hadoop.ipc.Client: Retrying connect to server: localhost/127.0.0.1:9000. Already tried 3 time(s).
+2013-03-14 15:01:09,598 INFO org.apache.hadoop.ipc.Client: Retrying connect to server: localhost/127.0.0.1:9000. Already tried 4 time(s).
+2013-03-14 15:01:10,599 INFO org.apache.hadoop.ipc.Client: Retrying connect to server: localhost/127.0.0.1:9000. Already tried 5 time(s).
+2013-03-14 15:01:11,600 INFO org.apache.hadoop.ipc.Client: Retrying connect to server: localhost/127.0.0.1:9000. Already tried 6 time(s).
+2013-03-14 15:01:12,601 INFO org.apache.hadoop.ipc.Client: Retrying connect to server: localhost/127.0.0.1:9000. Already tried 7 time(s).
+2013-03-14 15:01:13,602 INFO org.apache.hadoop.ipc.Client: Retrying connect to server: localhost/127.0.0.1:9000. Already tried 8 time(s).
+2013-03-14 15:01:14,603 INFO org.apache.hadoop.ipc.Client: Retrying connect to server: localhost/127.0.0.1:9000. Already tried 9 time(s).
+2013-03-14 15:01:14,605 ERROR org.apache.hadoop.security.UserGroupInformation: PriviledgedActionException as:xinfengli cause:java.net.ConnectException: Call to localhost/127.0.0.1:9000 failed on connection exception: java.net.ConnectException: Connection refused
+2013-03-14 15:01:14,605 INFO org.apache.hadoop.mapred.JobTracker: problem cleaning system directory: null
+java.net.ConnectException: Call to localhost/127.0.0.1:9000 failed on connection exception: java.net.ConnectException: Connection refused
+	at org.apache.hadoop.ipc.Client.wrapException(Client.java:1099)
+	at org.apache.hadoop.ipc.Client.call(Client.java:1075)
+	at org.apache.hadoop.ipc.RPC$Invoker.invoke(RPC.java:225)
+	at $Proxy5.getProtocolVersion(Unknown Source)
+	at org.apache.hadoop.ipc.RPC.getProxy(RPC.java:396)
+	at org.apache.hadoop.ipc.RPC.getProxy(RPC.java:379)
+	at org.apache.hadoop.hdfs.DFSClient.createRPCNamenode(DFSClient.java:119)
+	at org.apache.hadoop.hdfs.DFSClient.<init>(DFSClient.java:238)
+	at org.apache.hadoop.hdfs.DFSClient.<init>(DFSClient.java:203)
+	at org.apache.hadoop.hdfs.DistributedFileSystem.initialize(DistributedFileSystem.java:89)
+	at org.apache.hadoop.fs.FileSystem.createFileSystem(FileSystem.java:1386)
+	at org.apache.hadoop.fs.FileSystem.access$200(FileSystem.java:66)
+	at org.apache.hadoop.fs.FileSystem$Cache.get(FileSystem.java:1404)
+	at org.apache.hadoop.fs.FileSystem.get(FileSystem.java:254)
+	at org.apache.hadoop.fs.FileSystem.get(FileSystem.java:123)
+	at org.apache.hadoop.mapred.JobTracker$3.run(JobTracker.java:2367)
+	at org.apache.hadoop.mapred.JobTracker$3.run(JobTracker.java:2365)
+	at java.security.AccessController.doPrivileged(Native Method)
+	at javax.security.auth.Subject.doAs(Subject.java:415)
+	at org.apache.hadoop.security.UserGroupInformation.doAs(UserGroupInformation.java:1121)
+	at org.apache.hadoop.mapred.JobTracker.<init>(JobTracker.java:2365)
+	at org.apache.hadoop.mapred.JobTracker.<init>(JobTracker.java:2192)
+	at org.apache.hadoop.mapred.JobTracker.<init>(JobTracker.java:2186)
+	at org.apache.hadoop.mapred.JobTracker.startTracker(JobTracker.java:300)
+	at org.apache.hadoop.mapred.JobTracker.startTracker(JobTracker.java:291)
+	at org.apache.hadoop.mapred.JobTracker.main(JobTracker.java:4978)
+Caused by: java.net.ConnectException: Connection refused
+	at sun.nio.ch.SocketChannelImpl.checkConnect(Native Method)
+	at sun.nio.ch.SocketChannelImpl.finishConnect(SocketChannelImpl.java:701)
+	at org.apache.hadoop.net.SocketIOWithTimeout.connect(SocketIOWithTimeout.java:206)
+	at org.apache.hadoop.net.NetUtils.connect(NetUtils.java:489)
+	at org.apache.hadoop.ipc.Client$Connection.setupConnection(Client.java:434)
+	at org.apache.hadoop.ipc.Client$Connection.setupIOstreams(Client.java:560)
+	at org.apache.hadoop.ipc.Client$Connection.access$2000(Client.java:184)
+	at org.apache.hadoop.ipc.Client.getConnection(Client.java:1206)
+	at org.apache.hadoop.ipc.Client.call(Client.java:1050)
+	... 24 more
+2013-03-14 15:01:25,609 INFO org.apache.hadoop.ipc.Client: Retrying connect to server: localhost/127.0.0.1:9000. Already tried 0 time(s).
+2013-03-14 15:01:26,610 INFO org.apache.hadoop.ipc.Client: Retrying connect to server: localhost/127.0.0.1:9000. Already tried 1 time(s).
+2013-03-14 15:01:27,611 INFO org.apache.hadoop.ipc.Client: Retrying connect to server: localhost/127.0.0.1:9000. Already tried 2 time(s).
+2013-03-14 15:01:28,612 INFO org.apache.hadoop.ipc.Client: Retrying connect to server: localhost/127.0.0.1:9000. Already tried 3 time(s).
+2013-03-14 15:01:29,613 INFO org.apache.hadoop.ipc.Client: Retrying connect to server: localhost/127.0.0.1:9000. Already tried 4 time(s).
+2013-03-14 15:01:30,613 INFO org.apache.hadoop.ipc.Client: Retrying connect to server: localhost/127.0.0.1:9000. Already tried 5 time(s).
+2013-03-14 15:01:36,650 INFO org.apache.hadoop.mapred.JobTracker: Cleaning up the system directory
+2013-03-14 15:01:36,904 INFO org.apache.hadoop.mapred.JobTracker: History server being initialized in embedded mode
+2013-03-14 15:01:36,932 INFO org.apache.hadoop.mapred.JobHistoryServer: Started job history server at: localhost:50030
+2013-03-14 15:01:36,932 INFO org.apache.hadoop.mapred.JobTracker: Job History Server web address: localhost:50030
+2013-03-14 15:01:36,936 INFO org.apache.hadoop.mapred.CompletedJobStatusStore: Completed job store is inactive
+2013-03-14 15:01:37,285 WARN org.apache.hadoop.hdfs.DFSClient: DataStreamer Exception: org.apache.hadoop.ipc.RemoteException: java.io.IOException: File /tmp/hadoop-xinfengli/mapred/system/jobtracker.info could only be replicated to 0 nodes, instead of 1
+	at org.apache.hadoop.hdfs.server.namenode.FSNamesystem.getAdditionalBlock(FSNamesystem.java:1558)
+	at org.apache.hadoop.hdfs.server.namenode.NameNode.addBlock(NameNode.java:696)
+	at sun.reflect.NativeMethodAccessorImpl.invoke0(Native Method)
+	at sun.reflect.NativeMethodAccessorImpl.invoke(NativeMethodAccessorImpl.java:57)
+	at sun.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:43)
+	at java.lang.reflect.Method.invoke(Method.java:601)
+	at org.apache.hadoop.ipc.RPC$Server.call(RPC.java:563)
+	at org.apache.hadoop.ipc.Server$Handler$1.run(Server.java:1388)
+	at org.apache.hadoop.ipc.Server$Handler$1.run(Server.java:1384)
+	at java.security.AccessController.doPrivileged(Native Method)
+	at javax.security.auth.Subject.doAs(Subject.java:415)
+	at org.apache.hadoop.security.UserGroupInformation.doAs(UserGroupInformation.java:1121)
+	at org.apache.hadoop.ipc.Server$Handler.run(Server.java:1382)
+
+	at org.apache.hadoop.ipc.Client.call(Client.java:1070)
+	at org.apache.hadoop.ipc.RPC$Invoker.invoke(RPC.java:225)
+	at $Proxy5.addBlock(Unknown Source)
+	at sun.reflect.NativeMethodAccessorImpl.invoke0(Native Method)
+	at sun.reflect.NativeMethodAccessorImpl.invoke(NativeMethodAccessorImpl.java:57)
+	at sun.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:43)
+	at java.lang.reflect.Method.invoke(Method.java:601)
+	at org.apache.hadoop.io.retry.RetryInvocationHandler.invokeMethod(RetryInvocationHandler.java:82)
+	at org.apache.hadoop.io.retry.RetryInvocationHandler.invoke(RetryInvocationHandler.java:59)
+	at $Proxy5.addBlock(Unknown Source)
+	at org.apache.hadoop.hdfs.DFSClient$DFSOutputStream.locateFollowingBlock(DFSClient.java:3510)
+	at org.apache.hadoop.hdfs.DFSClient$DFSOutputStream.nextBlockOutputStream(DFSClient.java:3373)
+	at org.apache.hadoop.hdfs.DFSClient$DFSOutputStream.access$2600(DFSClient.java:2589)
+	at org.apache.hadoop.hdfs.DFSClient$DFSOutputStream$DataStreamer.run(DFSClient.java:2829)
+
+2013-03-14 15:01:37,285 WARN org.apache.hadoop.hdfs.DFSClient: Error Recovery for block null bad datanode[0] nodes == null
+2013-03-14 15:01:37,285 WARN org.apache.hadoop.hdfs.DFSClient: Could not get block locations. Source file "/tmp/hadoop-xinfengli/mapred/system/jobtracker.info" - Aborting...
+2013-03-14 15:01:37,285 WARN org.apache.hadoop.mapred.JobTracker: Writing to file hdfs://localhost:9000/tmp/hadoop-xinfengli/mapred/system/jobtracker.info failed!
+2013-03-14 15:01:37,287 WARN org.apache.hadoop.mapred.JobTracker: FileSystem is not ready yet!
+2013-03-14 15:01:37,303 WARN org.apache.hadoop.mapred.JobTracker: Failed to initialize recovery manager. 
+org.apache.hadoop.ipc.RemoteException: java.io.IOException: File /tmp/hadoop-xinfengli/mapred/system/jobtracker.info could only be replicated to 0 nodes, instead of 1
+	at org.apache.hadoop.hdfs.server.namenode.FSNamesystem.getAdditionalBlock(FSNamesystem.java:1558)
+	at org.apache.hadoop.hdfs.server.namenode.NameNode.addBlock(NameNode.java:696)
+	at sun.reflect.NativeMethodAccessorImpl.invoke0(Native Method)
+	at sun.reflect.NativeMethodAccessorImpl.invoke(NativeMethodAccessorImpl.java:57)
+	at sun.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:43)
+	at java.lang.reflect.Method.invoke(Method.java:601)
+	at org.apache.hadoop.ipc.RPC$Server.call(RPC.java:563)
+	at org.apache.hadoop.ipc.Server$Handler$1.run(Server.java:1388)
+	at org.apache.hadoop.ipc.Server$Handler$1.run(Server.java:1384)
+	at java.security.AccessController.doPrivileged(Native Method)
+	at javax.security.auth.Subject.doAs(Subject.java:415)
+	at org.apache.hadoop.security.UserGroupInformation.doAs(UserGroupInformation.java:1121)
+	at org.apache.hadoop.ipc.Server$Handler.run(Server.java:1382)
+
+	at org.apache.hadoop.ipc.Client.call(Client.java:1070)
+	at org.apache.hadoop.ipc.RPC$Invoker.invoke(RPC.java:225)
+	at $Proxy5.addBlock(Unknown Source)
+	at sun.reflect.NativeMethodAccessorImpl.invoke0(Native Method)
+	at sun.reflect.NativeMethodAccessorImpl.invoke(NativeMethodAccessorImpl.java:57)
+	at sun.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:43)
+	at java.lang.reflect.Method.invoke(Method.java:601)
+	at org.apache.hadoop.io.retry.RetryInvocationHandler.invokeMethod(RetryInvocationHandler.java:82)
+	at org.apache.hadoop.io.retry.RetryInvocationHandler.invoke(RetryInvocationHandler.java:59)
+	at $Proxy5.addBlock(Unknown Source)
+	at org.apache.hadoop.hdfs.DFSClient$DFSOutputStream.locateFollowingBlock(DFSClient.java:3510)
+	at org.apache.hadoop.hdfs.DFSClient$DFSOutputStream.nextBlockOutputStream(DFSClient.java:3373)
+	at org.apache.hadoop.hdfs.DFSClient$DFSOutputStream.access$2600(DFSClient.java:2589)
+	at org.apache.hadoop.hdfs.DFSClient$DFSOutputStream$DataStreamer.run(DFSClient.java:2829)
+2013-03-14 15:01:47,303 WARN org.apache.hadoop.mapred.JobTracker: Retrying...
+2013-03-14 15:01:47,439 WARN org.apache.hadoop.hdfs.DFSClient: DataStreamer Exception: org.apache.hadoop.ipc.RemoteException: java.io.IOException: File /tmp/hadoop-xinfengli/mapred/system/jobtracker.info could only be replicated to 0 nodes, instead of 1
+	at org.apache.hadoop.hdfs.server.namenode.FSNamesystem.getAdditionalBlock(FSNamesystem.java:1558)
+	at org.apache.hadoop.hdfs.server.namenode.NameNode.addBlock(NameNode.java:696)
+	at sun.reflect.NativeMethodAccessorImpl.invoke0(Native Method)
+	at sun.reflect.NativeMethodAccessorImpl.invoke(NativeMethodAccessorImpl.java:57)
+	at sun.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:43)
+	at java.lang.reflect.Method.invoke(Method.java:601)
+	at org.apache.hadoop.ipc.RPC$Server.call(RPC.java:563)
+	at org.apache.hadoop.ipc.Server$Handler$1.run(Server.java:1388)
+	at org.apache.hadoop.ipc.Server$Handler$1.run(Server.java:1384)
+	at java.security.AccessController.doPrivileged(Native Method)
+	at javax.security.auth.Subject.doAs(Subject.java:415)
+	at org.apache.hadoop.security.UserGroupInformation.doAs(UserGroupInformation.java:1121)
+	at org.apache.hadoop.ipc.Server$Handler.run(Server.java:1382)
+
+	at org.apache.hadoop.ipc.Client.call(Client.java:1070)
+	at org.apache.hadoop.ipc.RPC$Invoker.invoke(RPC.java:225)
+	at $Proxy5.addBlock(Unknown Source)
+	at sun.reflect.NativeMethodAccessorImpl.invoke0(Native Method)
+	at sun.reflect.NativeMethodAccessorImpl.invoke(NativeMethodAccessorImpl.java:57)
+	at sun.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:43)
+	at java.lang.reflect.Method.invoke(Method.java:601)
+	at org.apache.hadoop.io.retry.RetryInvocationHandler.invokeMethod(RetryInvocationHandler.java:82)
+	at org.apache.hadoop.io.retry.RetryInvocationHandler.invoke(RetryInvocationHandler.java:59)
+	at $Proxy5.addBlock(Unknown Source)
+	at org.apache.hadoop.hdfs.DFSClient$DFSOutputStream.locateFollowingBlock(DFSClient.java:3510)
+	at org.apache.hadoop.hdfs.DFSClient$DFSOutputStream.nextBlockOutputStream(DFSClient.java:3373)
+	at org.apache.hadoop.hdfs.DFSClient$DFSOutputStream.access$2600(DFSClient.java:2589)
+	at org.apache.hadoop.hdfs.DFSClient$DFSOutputStream$DataStreamer.run(DFSClient.java:2829)
+
+2013-03-14 15:01:47,439 WARN org.apache.hadoop.hdfs.DFSClient: Error Recovery for block null bad datanode[0] nodes == null
+2013-03-14 15:01:47,439 WARN org.apache.hadoop.hdfs.DFSClient: Could not get block locations. Source file "/tmp/hadoop-xinfengli/mapred/system/jobtracker.info" - Aborting...
+2013-03-14 15:01:47,439 WARN org.apache.hadoop.mapred.JobTracker: Writing to file hdfs://localhost:9000/tmp/hadoop-xinfengli/mapred/system/jobtracker.info failed!
+2013-03-14 15:01:47,439 WARN org.apache.hadoop.mapred.JobTracker: FileSystem is not ready yet!
+2013-03-14 15:01:47,447 WARN org.apache.hadoop.mapred.JobTracker: Failed to initialize recovery manager. 
+org.apache.hadoop.ipc.RemoteException: java.io.IOException: File /tmp/hadoop-xinfengli/mapred/system/jobtracker.info could only be replicated to 0 nodes, instead of 1
+	at org.apache.hadoop.hdfs.server.namenode.FSNamesystem.getAdditionalBlock(FSNamesystem.java:1558)
+	at org.apache.hadoop.hdfs.server.namenode.NameNode.addBlock(NameNode.java:696)
+	at sun.reflect.NativeMethodAccessorImpl.invoke0(Native Method)
+	at sun.reflect.NativeMethodAccessorImpl.invoke(NativeMethodAccessorImpl.java:57)
+	at sun.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:43)
+	at java.lang.reflect.Method.invoke(Method.java:601)
+	at org.apache.hadoop.ipc.RPC$Server.call(RPC.java:563)
+	at org.apache.hadoop.ipc.Server$Handler$1.run(Server.java:1388)
+	at org.apache.hadoop.ipc.Server$Handler$1.run(Server.java:1384)
+	at java.security.AccessController.doPrivileged(Native Method)
+	at javax.security.auth.Subject.doAs(Subject.java:415)
+	at org.apache.hadoop.security.UserGroupInformation.doAs(UserGroupInformation.java:1121)
+	at org.apache.hadoop.ipc.Server$Handler.run(Server.java:1382)
+
+	at org.apache.hadoop.ipc.Client.call(Client.java:1070)
+	at org.apache.hadoop.ipc.RPC$Invoker.invoke(RPC.java:225)
+	at $Proxy5.addBlock(Unknown Source)
+	at sun.reflect.NativeMethodAccessorImpl.invoke0(Native Method)
+	at sun.reflect.NativeMethodAccessorImpl.invoke(NativeMethodAccessorImpl.java:57)
+	at sun.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:43)
+	at java.lang.reflect.Method.invoke(Method.java:601)
+	at org.apache.hadoop.io.retry.RetryInvocationHandler.invokeMethod(RetryInvocationHandler.java:82)
+	at org.apache.hadoop.io.retry.RetryInvocationHandler.invoke(RetryInvocationHandler.java:59)
+	at $Proxy5.addBlock(Unknown Source)
+	at org.apache.hadoop.hdfs.DFSClient$DFSOutputStream.locateFollowingBlock(DFSClient.java:3510)
+	at org.apache.hadoop.hdfs.DFSClient$DFSOutputStream.nextBlockOutputStream(DFSClient.java:3373)
+	at org.apache.hadoop.hdfs.DFSClient$DFSOutputStream.access$2600(DFSClient.java:2589)
+	at org.apache.hadoop.hdfs.DFSClient$DFSOutputStream$DataStreamer.run(DFSClient.java:2829)
+2013-03-14 15:01:57,448 WARN org.apache.hadoop.mapred.JobTracker: Retrying...
+2013-03-14 15:01:57,558 INFO org.apache.hadoop.mapred.JobTracker: Refreshing hosts information
+2013-03-14 15:01:57,593 INFO org.apache.hadoop.util.HostsFileReader: Setting the includes file to 
+2013-03-14 15:01:57,593 INFO org.apache.hadoop.util.HostsFileReader: Setting the excludes file to 
+2013-03-14 15:01:57,593 INFO org.apache.hadoop.util.HostsFileReader: Refreshing hosts (include/exclude) list
+2013-03-14 15:01:57,594 INFO org.apache.hadoop.mapred.JobTracker: Decommissioning 0 nodes
+2013-03-14 15:01:57,595 INFO org.apache.hadoop.ipc.Server: IPC Server Responder: starting
+2013-03-14 15:01:57,596 INFO org.apache.hadoop.ipc.Server: IPC Server listener on 9001: starting
+2013-03-14 15:01:57,600 INFO org.apache.hadoop.ipc.Server: IPC Server handler 0 on 9001: starting
+2013-03-14 15:01:57,603 INFO org.apache.hadoop.ipc.Server: IPC Server handler 1 on 9001: starting
+2013-03-14 15:01:57,603 INFO org.apache.hadoop.ipc.Server: IPC Server handler 2 on 9001: starting
+2013-03-14 15:01:57,603 INFO org.apache.hadoop.ipc.Server: IPC Server handler 3 on 9001: starting
+2013-03-14 15:01:57,603 INFO org.apache.hadoop.ipc.Server: IPC Server handler 4 on 9001: starting
+2013-03-14 15:01:57,604 INFO org.apache.hadoop.ipc.Server: IPC Server handler 5 on 9001: starting
+2013-03-14 15:01:57,604 INFO org.apache.hadoop.ipc.Server: IPC Server handler 6 on 9001: starting
+2013-03-14 15:01:57,604 INFO org.apache.hadoop.ipc.Server: IPC Server handler 7 on 9001: starting
+2013-03-14 15:01:57,604 INFO org.apache.hadoop.ipc.Server: IPC Server handler 8 on 9001: starting
+2013-03-14 15:01:57,604 INFO org.apache.hadoop.mapred.JobTracker: Starting RUNNING
+2013-03-14 15:01:57,604 INFO org.apache.hadoop.ipc.Server: IPC Server handler 9 on 9001: starting
+2013-03-14 15:02:01,436 INFO org.apache.hadoop.net.NetworkTopology: Adding a new node: /default-rack/xinfengli-laptop
+2013-03-14 15:02:01,451 INFO org.apache.hadoop.mapred.JobTracker: Adding tracker tracker_xinfengli-laptop:localhost/127.0.0.1:58557 to host xinfengli-laptop
+2013-03-14 21:39:39,701 INFO org.apache.hadoop.mapred.JobTracker: SHUTDOWN_MSG: 
+/************************************************************
+SHUTDOWN_MSG: Shutting down JobTracker at xinfengli-laptop/127.0.1.1
+************************************************************/

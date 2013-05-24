@@ -22,7 +22,7 @@
   <import file="../build-contrib.xml"/>
 
   <path id="eclipse-sdk-jars">
-    <fileset dir="${eclipse.home}/plugins/">
+    <fileset dir="/home/xinfengli/Downloads/eclipse/plugins/">
       <include name="org.eclipse.ui*.jar"/>
       <include name="org.eclipse.jdt*.jar"/>
       <include name="org.eclipse.core*.jar"/>
@@ -34,6 +34,7 @@
 
       <include name="org.eclipse.team.cvs.ssh2*.jar"/>
       <include name="com.jcraft.jsch*.jar"/>
+<include name="hadoop*.jar"/>
     </fileset> 
   </path>
 
@@ -41,6 +42,10 @@
   <path id="classpath">
     <pathelement location="${build.classes}"/>
     <pathelement location="${hadoop.root}/build/classes"/>
+<!-- hadoop-core-1.0.1.jar dependency -->  
+<pathelement location="${hadoop.root}"/>  
+<!-- common lib dependency -->  
+<pathelement location="${hadoop.root}/lib"/> 
     <path refid="eclipse-sdk-jars"/>
   </path>
 

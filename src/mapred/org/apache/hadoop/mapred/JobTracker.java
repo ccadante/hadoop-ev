@@ -3307,8 +3307,14 @@ public class JobTracker implements MRConstants, InterTrackerProtocol,
                                                   boolean restarted,
                                                   boolean initialContact,
                                                   boolean acceptNewTasks, 
-                                                  short responseId) // NOTE: lxf
+                                                  short responseId) 
     throws IOException {
+	  String sizeStr = "EVStats size: ";
+	    for(int x = 0; x<status.getTaskReports().size(); x++){
+	    	sizeStr += status.getTaskReports().get(x).getEVStats().size() + " ";
+	    }
+	    LOG.warn(sizeStr);
+	    
     if (LOG.isDebugEnabled()) {
       LOG.debug("Got heartbeat from: " + status.getTrackerName() + 
                 " (restarted: " + restarted + 
@@ -4737,6 +4743,7 @@ public class JobTracker implements MRConstants, InterTrackerProtocol,
         // the changes should not get reflected in TaskTrackerStatus.
         // An old TaskTrackerStatus is used later in countMapTasks, etc.
         job.updateTaskStatus(tip, (TaskStatus)report.clone());
+        job.updateEVStats(report);
         JobStatus newStatus = (JobStatus)job.getStatus().clone();
         
         // Update the listeners if an incomplete job completes

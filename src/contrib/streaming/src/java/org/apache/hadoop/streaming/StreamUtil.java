@@ -214,6 +214,10 @@ public class StreamUtil {
     }
   }
 
+  public static String getHost(){
+	    return HOST;
+	  }
+  
   static class StreamConsumer extends Thread {
 
     StreamConsumer(InputStream in, OutputStream out) {
