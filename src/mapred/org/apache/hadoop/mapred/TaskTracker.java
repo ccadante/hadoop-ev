@@ -1851,11 +1851,11 @@ public class TaskTracker implements MRConstants, TaskUmbilicalProtocol,
         healthStatus.setHealthReport("");
       }
     }
-    String sizeStr = "EVStats size: ";
+    /*String sizeStr = "EVStats (" + status.getTrackerName() + " size = ";
     for(int x = 0; x<status.getTaskReports().size(); x++){
     	sizeStr += status.getTaskReports().get(x).getEVStats().size() + " ";
     }
-    LOG.warn(sizeStr);
+    LOG.warn(sizeStr);*/
     //
     // Xmit the heartbeat
     //
@@ -2803,8 +2803,9 @@ public class TaskTracker implements MRConstants, TaskUmbilicalProtocol,
       // add EVStat to TaskStatus if it is MapTask
       Task t = runner.getTask();
       if (t.isMapTask()){
-      	this.taskStatus.addEVStats(((MapTask)t).myEVStat);
-      	LOG.warn("reportDone: addEVStats with size " + this.taskStatus.getEVStats().size());
+      	this.taskStatus.addEVStats(((MapTask)t).getEVStats());
+      	LOG.warn("reportDone: addEVStats with size " + this.taskStatus.getEVStats().size() + 
+      			" id=" + t.getTaskID());
       }
       
       this.done = true;

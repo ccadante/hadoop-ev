@@ -404,6 +404,11 @@ public abstract class TaskStatus implements Writable, Cloneable {
       counters.write(out);
     }
     nextRecordRange.write(out);
+    // EVStats
+    out.writeInt(evStats.size());
+    for(int i=0; i<evStats.size(); i++){
+    	evStats.get(i).write(out);
+    }
   }
 
   public void readFields(DataInput in) throws IOException {
@@ -423,6 +428,13 @@ public abstract class TaskStatus implements Writable, Cloneable {
       counters.readFields(in);
     }
     nextRecordRange.readFields(in);
+    // EVStats
+    int evStatsSize = in.readInt();
+    for(int i=0; i<evStatsSize; i++){
+    	EVStatistics newStat = new EVStatistics();
+    	newStat.readFields(in);
+    	evStats.add(newStat);
+    }
   }
   
   //////////////////////////////////////////////////////////////////////////////
@@ -472,6 +484,10 @@ public abstract class TaskStatus implements Writable, Cloneable {
   }
   
   public void addEVStats(EVStatistics stat){
+	  if (stat == null || stat.getSize() == 0){
+		  LOG.warn("addEVStats got a null/empty stat.");
+		  return;
+	  }
 	  evStats.add(stat);
 	}
 	  

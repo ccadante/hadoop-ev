@@ -26,13 +26,18 @@ import static org.apache.hadoop.mapred.Task.Counter.MAP_OUTPUT_BYTES;
 import static org.apache.hadoop.mapred.Task.Counter.MAP_OUTPUT_MATERIALIZED_BYTES;
 import static org.apache.hadoop.mapred.Task.Counter.MAP_OUTPUT_RECORDS;
 
+import java.io.BufferedReader;
 import java.io.DataInput;
 import java.io.DataOutput;
 import java.io.DataOutputStream;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
+import java.net.InetAddress;
+import java.net.Socket;
+import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.locks.Condition;
@@ -93,7 +98,7 @@ class MapTask extends Task {
     setPhase(TaskStatus.Phase.MAP); 
   }
 
-  EVStatistics myEVStat = null;
+  EVStatistics myEVStat = new EVStatistics();
   
   public MapTask() {
     super();
@@ -766,6 +771,7 @@ class MapTask extends Task {
       input.initialize(split, mapperContext);
       mapper.run(mapperContext);
       myEVStat = mapperContext.getEVStats();
+      sendEVStatsToJobStracker();
       LOG.warn("Get EVStatistics with size of " + myEVStat.getSize() + 
     		  " and one value as " + myEVStat.getFirstStat());
       input.close();
@@ -781,6 +787,13 @@ class MapTask extends Task {
     }
   }
   
+  /**
+   * Note: we will directly send the EVStats back to JobTracker vis socket, instead of 
+   * RPC (heartbeat messages) between TaskTracker and JObTracker. The reason is MapTask
+   * is executed by a Child JVM process and needs extra IPC to send back EVStats to
+   * TaskTracker even though Child and TaskTracker locate in the same machine.
+   */
+  @Deprecated 
   public EVStatistics getEVStats(){
 	  return myEVStat;
   }
@@ -1749,4 +1762,49 @@ class MapTask extends Task {
     }
   }
 
+  private void sendEVStatsToJobStracker(){
+	  if (myEVStat.getSize() == 0){
+		  return;
+	  }
+	  int serverPort = conf.getInt("mapred.evstats.serverport", 10593);
+	  String servAddr = conf.get("mapred.job.tracker", "localhost:9001");
+	  servAddr = servAddr.substring(0, servAddr.lastIndexOf(":"));
+	  LOG.warn("sendEVStatsToJobStracker: " + servAddr + ":" + serverPort +
+			  " size = " + myEVStat.getSize());
+	  int reTry = 0;
+	  Socket dataSkt = null;
+	  DataOutputStream output = null;
+	  while (reTry < 3){
+		  reTry++;
+		  try {
+			InetAddress ia = InetAddress.getByName(servAddr); // server address
+			dataSkt = new Socket(ia, serverPort);
+			output = new DataOutputStream(dataSkt.getOutputStream());
+			myEVStat.sendData(output);
+		  } catch (UnknownHostException e) {
+			e.printStackTrace();
+		  } catch (IOException e) {
+			e.printStackTrace();
+		  }
+		  finally {
+			  try {
+				  if (output != null)
+					  output.close();
+				  if (dataSkt != null)
+					  dataSkt.close();
+				}
+				catch (Exception e) {
+					LOG.error(e.getMessage());
+				}
+				finally {
+					dataSkt = null;
+				}
+		  }
+		try {
+			Thread.sleep(100);
+		}  catch (InterruptedException e) {
+			e.printStackTrace();
+		}
+	  }
+  }
 }

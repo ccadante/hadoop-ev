@@ -106,6 +106,7 @@ import org.apache.hadoop.util.StringUtils;
 import org.apache.hadoop.util.VersionInfo;
 
 import org.apache.hadoop.mapreduce.ClusterMetrics;
+import org.apache.hadoop.mapreduce.EVStatistics;
 import org.apache.hadoop.mapreduce.JobSubmissionFiles;
 import org.apache.hadoop.mapreduce.TaskType;
 import org.apache.hadoop.mapreduce.security.token.DelegationTokenRenewal;
@@ -232,7 +233,11 @@ public class JobTracker implements MRConstants, InterTrackerProtocol,
     FsPermission.createImmutable((short) 0700); // rwx------
   
   private Clock clock;
-
+  
+  //EVStatsServer port (TODO: start a bunch of ports to handle concurrent connections?)
+  private int portEVStatsServer; 
+  private EVStatsServer evStatsServer;
+  
   private final JobTokenSecretManager jobTokenSecretManager
     = new JobTokenSecretManager();
 
@@ -2474,6 +2479,11 @@ public class JobTracker implements MRConstants, InterTrackerProtocol,
 
     //initializes the job status store
     completedJobStatusStore = new CompletedJobStatusStore(conf, aclsManager);
+    
+    // Start EVStatsServer
+    this.portEVStatsServer = conf.getInt("mapred.evstats.serverport", 10593);
+    evStatsServer = new EVStatsServer(this.portEVStatsServer, this);
+    evStatsServer.start();
   }
 
   private static SimpleDateFormat getDateFormat() {
@@ -3309,11 +3319,11 @@ public class JobTracker implements MRConstants, InterTrackerProtocol,
                                                   boolean acceptNewTasks, 
                                                   short responseId) 
     throws IOException {
-	  String sizeStr = "EVStats size: ";
+	  /*String sizeStr = "EVStats (" + status.getTrackerName() + " size = ";
 	    for(int x = 0; x<status.getTaskReports().size(); x++){
 	    	sizeStr += status.getTaskReports().get(x).getEVStats().size() + " ";
 	    }
-	    LOG.warn(sizeStr);
+	    LOG.warn(sizeStr);*/
 	    
     if (LOG.isDebugEnabled()) {
       LOG.debug("Got heartbeat from: " + status.getTrackerName() + 
@@ -4743,7 +4753,7 @@ public class JobTracker implements MRConstants, InterTrackerProtocol,
         // the changes should not get reflected in TaskTrackerStatus.
         // An old TaskTrackerStatus is used later in countMapTasks, etc.
         job.updateTaskStatus(tip, (TaskStatus)report.clone());
-        job.updateEVStats(report);
+        //job.updateEVStats(report);
         JobStatus newStatus = (JobStatus)job.getStatus().clone();
         
         // Update the listeners if an incomplete job completes
@@ -5380,4 +5390,18 @@ public class JobTracker implements MRConstants, InterTrackerProtocol,
     return map;
   }
   // End MXbean implementaiton
+  
+  Set<EVStatistics> evStats = new HashSet<EVStatistics>();
+  
+  public void addEVStats(EVStatistics evStat){
+	  if (evStat == null || evStat.getSize() == 0) {
+		  LOG.warn("Got a null/empty stat.");
+		  return;
+	  }
+	  synchronized (JobTracker.this){
+		  evStats.add(evStat);
+		  LOG.warn("addEVStats size = " + evStats.size());
+	  }
+	  
+  }
 }

@@ -494,6 +494,9 @@ class JvmManager {
             String taskAttemptIdStr = task.isTaskCleanupTask() ? 
                 (taskAttemptId.toString() + TaskTracker.TASK_CLEANUP_SUFFIX) :
                   taskAttemptId.toString(); 
+                if (task.isMapTask()) {
+                	LOG.warn("runChild: size = " + ((MapTask)task).getEVStats().getSize());
+                }
                 exitCode = tracker.getTaskController().launchTask(user,
                     jvmId.jobId.toString(), taskAttemptIdStr, env.setup,
                     env.vargs, env.workDir, env.stdout.toString(),

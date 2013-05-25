@@ -18,24 +18,53 @@
 
 package org.apache.hadoop.mapreduce;
 
+import java.io.DataInput;
+import java.io.DataOutput;
+import java.io.DataOutputStream;
+import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 
+import org.apache.hadoop.io.Text;
+import org.mortbay.log.Log;
+
 public class EVStatistics {
 	class StatsType {
-		public StatsType(String name, String string) {
-			
+		String type;
+		String value;
+		public StatsType(String t, String v) {
+			type = t;
+			value = v;
+		}
+		
+		public StatsType(String str) {
+			String[] pair = str.split(":");
+			if (pair.length == 2) {
+				type = pair[0];
+				value = pair[1];
+			} else {
+				type = str;
+				value = "UNKNOWN";
+			}
+		}
+		
+		public String toString(){
+			return (type + ":" + value);
 		}
 	}
 	
 	Map<StatsType, Long> timeProfile = new HashMap<StatsType, Long>();
 	
 	public EVStatistics(){
-		
+		timeProfile.clear();
 	}
 
 	public void addTimeStat(StatsType type, long time) {
 		timeProfile.put(type, time);
+	}
+	
+	public void addTimeStat(String typeStr, String timeStr) {
+		timeProfile.put(new StatsType(typeStr), Long.parseLong(timeStr));
 	}
 
 	public int getSize() {
@@ -47,5 +76,34 @@ public class EVStatistics {
 			return value;
 		}
 		return -1;
+	}
+	
+	public void sendData(DataOutputStream output) throws IOException{
+		output.writeBytes(getSize() + "\n");
+		for (StatsType key : timeProfile.keySet()) {
+			String content = key.toString() + ";" + timeProfile.get(key);
+			output.writeBytes(content + "\n");
+		}	
+		Log.warn("SendData done.");
+	}
+
+	//////////////////////////////////////////////
+	// Writable
+	//////////////////////////////////////////////
+	public void write(DataOutput out) throws IOException {
+		out.writeInt(getSize());
+		for (StatsType key : timeProfile.keySet()) {
+			Text.writeString(out, key.toString());
+			out.writeLong(timeProfile.get(key));
+		}		
 	}		
+	
+	public void readFields(DataInput in) throws IOException {
+		int size = in.readInt();
+		for (int i=0; i<size; i++){
+			String statType = Text.readString(in);
+			long time = in.readLong();
+			addTimeStat(new StatsType(statType), time);
+		}
+	}
 }

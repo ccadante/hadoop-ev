@@ -250,6 +250,9 @@ abstract class TaskRunner extends Thread {
       
       launchJvmAndWait(setupCmds, vargs, stdout, stderr, logSize, workDir);
       tracker.getTaskTrackerInstrumentation().reportTaskEnd(t.getTaskID());
+      if (t.isMapTask()) {
+    	  LOG.warn("Run just completed: size = " + ((MapTask)t).getEVStats().getSize());
+      }
       if (exitCodeSet) {
         if (!killed && exitCode != 0) {
           if (exitCode == 65) {
