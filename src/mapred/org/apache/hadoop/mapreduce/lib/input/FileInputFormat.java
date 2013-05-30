@@ -185,7 +185,7 @@ public abstract class FileInputFormat<K, V> extends InputFormat<K, V> {
    * @return array of FileStatus objects
    * @throws IOException if zero items.
    */
-  protected List<FileStatus> listStatus(JobContext job
+  public List<FileStatus> listStatus(JobContext job
                                         ) throws IOException {
     List<FileStatus> result = new ArrayList<FileStatus>();
     Path[] dirs = getInputPaths(job);

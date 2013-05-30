@@ -20,15 +20,27 @@ package org.apache.hadoop.mapreduce;
 
 import java.io.IOException;
 import java.security.PrivilegedExceptionAction;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Random;
 
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.io.IntWritable;
 import org.apache.hadoop.io.RawComparator;
+import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapreduce.TaskAttemptID;
+import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
+import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 import org.apache.hadoop.mapred.JobClient;
 import org.apache.hadoop.mapred.JobConf;
 import org.apache.hadoop.mapred.RunningJob;
 import org.apache.hadoop.mapred.TaskCompletionEvent;
+import org.apache.hadoop.util.ReflectionUtils;
+import org.apache.hadoop.util.StringUtils;
+import org.hsqldb.lib.StringUtil;
+import org.mortbay.log.Log;
 
 /**
  * The job submitter's view of the Job. It allows the user to configure the
@@ -535,6 +547,74 @@ public class Job extends JobContext {
       info.waitForCompletion();
     }
     return isSuccessful();
+  }
+  
+  /**
+   * Get the sample strategy and submit a series of jobs
+   * @throws ClassNotFoundException 
+   * @throws InterruptedException 
+   * @throws IOException 
+   * @throws CloneNotSupportedException 
+   */
+  public boolean waitForSampleCompletion() throws IOException, InterruptedException, ClassNotFoundException, CloneNotSupportedException
+  {
+	  String dirs = this.getConfiguration().get("mapred.input.dir", "");
+	  String [] list = StringUtils.split(dirs);
+
+	  Configuration conf = this.getConfiguration();
+	  InputFormat<?, ?> input = ReflectionUtils.newInstance(this.getInputFormatClass(), conf);
+
+	  List<FileStatus> files = ((FileInputFormat)input).listStatus(this);
+	  for(int i=0; i<3; i++)
+	  {
+		  List<String> inputfile =  RandomSample(files,  10);
+		  Job newjob = new Job(this.getConfiguration(), "sample_"+i);
+		  Log.info(newjob.getJar() + list.length);
+		  FileOutputFormat.setOutputPath(newjob, new Path(this.getConfiguration().get(("mapred.output.dir"))+"_"+i));
+		  FileInputFormat.setInputPaths(newjob, new Path(inputfile.get(0)));
+		  for (int j=1; j<inputfile.size(); j++)
+		  {
+			  FileInputFormat.addInputPath(newjob, new Path(inputfile.get(j)));
+		  }
+			
+		  newjob.waitForCompletion(true);
+	  }
+	  return true;
+  }
+  
+  /**
+   * Random sample num files from a FileStatus List
+   * @param files
+   * @param num
+   * @return
+   */
+  private List<String> RandomSample(List<FileStatus> files, int num)
+  {
+	  if (num > files.size())
+		  num = files.size();
+	  List<String> res = new ArrayList<String>();
+	  for(int i=0; i<num; i++)
+	  {
+		  Random rand = new Random();
+		  int idx = rand.nextInt(files.size()-1);
+		  res.add(HDFStoLocalConvert(files.get(idx).getPath().toString()));
+	  }
+	  return res;
+  }
+  
+  /**
+   * Convert HDFS dir to local dir
+   */
+  private String HDFStoLocalConvert(String HDFSStr)
+  {
+	  int iter = 5;
+	  int pos = -1;
+	  for (int i=0; i<iter; i++)
+	  {
+		  pos = HDFSStr.indexOf("/", pos+1);
+	  }
+	  Log.info(HDFSStr.substring(pos+1));
+	  return HDFSStr.substring(pos+1);
   }
   
 }
