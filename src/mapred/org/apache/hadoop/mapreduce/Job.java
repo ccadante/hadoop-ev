@@ -564,7 +564,7 @@ public class Job extends JobContext {
 	  Configuration conf = this.getConfiguration();
 	  InputFormat<?, ?> input = ReflectionUtils.newInstance(this.getInputFormatClass(), conf);
 
-	  List<FileStatus> files = ((FileInputFormat)input).listStatus(this);
+	  List<FileStatus> files = ((FileInputFormat)input).getListStatus(this);
 	  for(int i=0; i<3; i++)
 	  {
 		  List<String> inputfile =  RandomSample(files,  10);

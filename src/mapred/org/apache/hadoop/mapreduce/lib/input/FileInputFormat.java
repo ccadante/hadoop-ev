@@ -185,7 +185,7 @@ public abstract class FileInputFormat<K, V> extends InputFormat<K, V> {
    * @return array of FileStatus objects
    * @throws IOException if zero items.
    */
-  public List<FileStatus> listStatus(JobContext job
+  protected List<FileStatus> listStatus(JobContext job
                                         ) throws IOException {
     List<FileStatus> result = new ArrayList<FileStatus>();
     Path[] dirs = getInputPaths(job);
@@ -238,7 +238,10 @@ public abstract class FileInputFormat<K, V> extends InputFormat<K, V> {
     return result;
   }
   
-
+  // For access from Job.java
+  public List<FileStatus> getListStatus(JobContext job) throws IOException {
+	  return listStatus(job);
+  }
   /** 
    * Generate the list of files and make them into FileSplits.
    */ 
