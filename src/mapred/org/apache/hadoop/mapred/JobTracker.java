@@ -2481,9 +2481,9 @@ public class JobTracker implements MRConstants, InterTrackerProtocol,
     completedJobStatusStore = new CompletedJobStatusStore(conf, aclsManager);
     
     // Start EVStatsServer
-    this.portEVStatsServer = conf.getInt("mapred.evstats.serverport", 10593);
+    /*this.portEVStatsServer = conf.getInt("mapred.evstats.serverport", 10593);
     evStatsServer = new EVStatsServer(this.portEVStatsServer, this);
-    evStatsServer.start();
+    evStatsServer.start();*/
   }
 
   private static SimpleDateFormat getDateFormat() {
@@ -5392,7 +5392,7 @@ public class JobTracker implements MRConstants, InterTrackerProtocol,
   // End MXbean implementaiton
   
   Set<EVStatistics> evStats = new HashSet<EVStatistics>();
-  
+  @Deprecated
   public void addEVStats(EVStatistics evStat){
 	  if (evStat == null || evStat.getSize() == 0) {
 		  LOG.warn("Got a null/empty stat.");

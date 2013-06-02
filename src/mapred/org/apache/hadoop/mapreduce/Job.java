@@ -21,26 +21,37 @@ package org.apache.hadoop.mapreduce;
 import java.io.IOException;
 import java.security.PrivilegedExceptionAction;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.Random;
+import java.util.Set;
 
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.IntWritable;
 import org.apache.hadoop.io.RawComparator;
 import org.apache.hadoop.io.Text;
+import org.apache.hadoop.mapreduce.EVStatistics.Stats;
+import org.apache.hadoop.mapreduce.EVStatistics.StatsType;
 import org.apache.hadoop.mapreduce.TaskAttemptID;
 import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
+import org.apache.hadoop.mapred.EVStatsServer;
 import org.apache.hadoop.mapred.JobClient;
 import org.apache.hadoop.mapred.JobConf;
+import org.apache.hadoop.mapred.JobTracker;
 import org.apache.hadoop.mapred.RunningJob;
 import org.apache.hadoop.mapred.TaskCompletionEvent;
 import org.apache.hadoop.util.ReflectionUtils;
 import org.apache.hadoop.util.StringUtils;
 import org.hsqldb.lib.StringUtil;
-import org.mortbay.log.Log;
+//import org.mortbay.log.Log;
 
 /**
  * The job submitter's view of the Job. It allows the user to configure the
@@ -49,17 +60,31 @@ import org.mortbay.log.Log;
  * IllegalStateException.
  */
 public class Job extends JobContext {  
+	public static final Log LOG = LogFactory.getLog(Job.class);
+	
   public static enum JobState {DEFINE, RUNNING};
   private JobState state = JobState.DEFINE;
   private JobClient jobClient;
   private RunningJob info;
+  
+  //EVStatsServer port (TODO: start a bunch of ports to handle concurrent connections?)
+  private int portEVStatsServer; 
+  private static EVStatsServer evStatsServer;
 
   public Job() throws IOException {
     this(new Configuration());
   }
 
   public Job(Configuration conf) throws IOException {
-    super(conf, null);
+	  super(conf, null);
+	  if (evStatsServer == null) {
+	    // Start EVStatsServer
+	    Random rand = new Random();
+	    this.portEVStatsServer = 10593 + rand.nextInt(1000);
+	    getConfiguration().setInt("mapred.evstats.serverport", portEVStatsServer);
+	    evStatsServer = new EVStatsServer(this.portEVStatsServer, this);
+	    evStatsServer.start();	    
+	  }    
   }
 
   public Job(Configuration conf, String jobName) throws IOException {
@@ -560,17 +585,41 @@ public class Job extends JobContext {
   {
 	  String dirs = this.getConfiguration().get("mapred.input.dir", "");
 	  String [] list = StringUtils.split(dirs);
-
+	  
+	  // Get time constraint.
+	  int timeConstraint = this.getConfiguration().getInt("mapred.deadline.second", 200);
+	  long deadline = System.currentTimeMillis() + timeConstraint * 1000;
+	  LOG.info("Deadline: " + deadline + " (" + timeConstraint + "s)");
+	  
 	  Configuration conf = this.getConfiguration();
 	  InputFormat<?, ?> input = ReflectionUtils.newInstance(this.getInputFormatClass(), conf);
 
 	  List<FileStatus> files = ((FileInputFormat)input).getListStatus(this);
-	  for(int i=0; i<3; i++)
-	  {
-		  List<String> inputfile =  RandomSample(files,  10);
-		  Job newjob = new Job(this.getConfiguration(), "sample_"+i);
-		  Log.info(newjob.getJar() + list.length);
-		  FileOutputFormat.setOutputPath(newjob, new Path(this.getConfiguration().get(("mapred.output.dir"))+"_"+i));
+	  int runCount = 0;
+	  // loop until deadline.
+	  while(System.currentTimeMillis() < deadline)
+	  {		  
+		  LOG.info("To deadline: " + (deadline - System.currentTimeMillis()) + " ms");
+		  runCount++;
+		  Map<String, Double> proportion = processEVStats();
+		  long avgTime = Long.valueOf(evStats.getAggreStat("time_per_record"));
+		  int totalSize = Integer.valueOf(evStats.getAggreStat("total_size")); 
+		  int nextSize = 1;
+		  if (runCount < 3) {
+			  nextSize = 10 * runCount;
+		  } else {
+			  // Now, nextSize is simply determined by the average time cost of previous 
+			  // Map execution. Current simple estimation is not accurate as extra overhead
+			  // is ignored. 
+			  if (avgTime > 0) {
+				  nextSize = (int) ((deadline - System.currentTimeMillis()) * 1000000 / avgTime);
+			  }
+		  }
+		  LOG.info("Next sample size = " + nextSize + "\t" + avgTime + " : " + totalSize);
+		  List<String> inputfile =  RandomSample(files,  nextSize, proportion);
+		  Job newjob = new Job(this.getConfiguration(), "sample_" + runCount);
+		  LOG.info(newjob.getJar() + " " + list.length);
+		  FileOutputFormat.setOutputPath(newjob, new Path(this.getConfiguration().get(("mapred.output.dir")) + "_" + runCount));
 		  FileInputFormat.setInputPaths(newjob, new Path(inputfile.get(0)));
 		  for (int j=1; j<inputfile.size(); j++)
 		  {
@@ -593,11 +642,43 @@ public class Job extends JobContext {
 	  if (num > files.size())
 		  num = files.size();
 	  List<String> res = new ArrayList<String>();
+	  Random rand = new Random();
 	  for(int i=0; i<num; i++)
 	  {
-		  Random rand = new Random();
 		  int idx = rand.nextInt(files.size()-1);
 		  res.add(HDFStoLocalConvert(files.get(idx).getPath().toString()));
+	  }
+	  return res;
+  }
+  
+  // Get file list based on the proportion of different dimensions (i.e., location).
+  private List<String> RandomSample(List<FileStatus> files, int num, Map<String, Double> proportion)
+  {
+	  if (proportion.size() == 0) {
+		  return RandomSample(files, num);
+	  }
+	  if (num > files.size())
+		  num = files.size();
+	  List<String> res = new ArrayList<String>();
+	  Map<String, Double> sizeProportion = new HashMap<String, Double>();
+	  for (String key : proportion.keySet()) {
+		  sizeProportion.put(key, num * proportion.get(key));
+		  LOG.info("RandomSample: " + key + " " + sizeProportion.get(key));
+	  }
+	  int count = num;
+	  Random rand = new Random();
+	  while(count > 0.99)
+	  {
+		  int idx = rand.nextInt(files.size()-1);
+		  String filename = HDFStoLocalConvert(files.get(idx).getPath().toString());
+		  for (String key : sizeProportion.keySet()) {
+			  if (filename.contains(key) && sizeProportion.get(key) >= 1.0) {
+				  proportion.put(key, proportion.get(key) - 1.0); // decrease one from quota
+				  res.add(filename);
+				  count--;
+				  break;
+			  }
+		  }
 	  }
 	  return res;
   }
@@ -613,8 +694,86 @@ public class Job extends JobContext {
 	  {
 		  pos = HDFSStr.indexOf("/", pos+1);
 	  }
-	  Log.info(HDFSStr.substring(pos+1));
+	  //LOG.info(HDFSStr.substring(pos+1));
 	  return HDFSStr.substring(pos+1);
+  }
+ 
+  Set<EVStatistics> evStatsSet = new HashSet<EVStatistics>();
+  EVStatistics evStats = new EVStatistics();
+  
+  /**
+   * Add one piece of EVStats into the global set.
+   * @param evStat
+   */
+  public void addEVStats(EVStatistics evStat){
+	  if (evStat == null || evStat.getSize() == 0) {
+		  LOG.warn("Got a null/empty stat.");
+		  return;
+	  }
+	  synchronized (Job.this){
+		  evStatsSet.add(evStat);
+		  LOG.warn("addEVStats size = " + evStatsSet.size());
+	  }
+  }
+  
+  /**
+   * Process current set of EVStats to get the time-cost distribution across different domain. 
+   * Currently, we aggregate data for each folder (i.e, camera location).
+   * @return Map<String, Double>, e.g., <"16m_1", 0.90>, <"16m_1", 0.099>
+   */
+  Map<String, Double> processEVStats(){
+	  long avgTime = 0;
+	  long totalSize = 0;
+	  Map<String, Stats> final_stat = new HashMap<String, Stats>();
+	  
+      for (EVStatistics evstat : evStatsSet) {
+    	  avgTime += evstat.getAvgTime() * evstat.getSize();
+    	  totalSize += evstat.getSize();
+    	  for (StatsType type : evstat.timeProfile.keySet()) {
+    		  String loc = type.value;
+    		  loc = loc.substring(0, loc.lastIndexOf("/"));
+    		  loc = loc.substring(loc.lastIndexOf("/")+1);
+    		  if (!final_stat.containsKey(loc)) {
+    			  final_stat.put(loc, evStats.new Stats());
+    		  }
+    		  Stats stat = final_stat.get(loc);
+    		  stat.addValue(evstat.timeProfile.get(type));
+    	  }
+      }
+      for (String key : final_stat.keySet()) {
+    	  final_stat.get(key).computeAvg();
+      }
+      for (EVStatistics evstat : evStatsSet) {
+    	  for (StatsType type : evstat.timeProfile.keySet()) {
+    		  String loc = type.value;
+    		  loc = loc.substring(0, loc.lastIndexOf("/"));
+    		  loc = loc.substring(loc.lastIndexOf("/")+1);
+    		  Stats stat = final_stat.get(loc);
+    		  stat.addDiff(evstat.timeProfile.get(type));
+    	  }
+      }
+      double total = 0;
+      for (String key : final_stat.keySet()) {
+    	  final_stat.get(key).computeVar();
+    	  total += final_stat.get(key).var;
+    	  LOG.info(key + "\t" + final_stat.get(key).avg + "  " + final_stat.get(key).var + " " +
+    			  final_stat.get(key).count);
+      }
+      Map<String, Double> ret = new HashMap<String, Double>();
+      for (String key : final_stat.keySet()) {
+    	  ret.put(key, final_stat.get(key).var / total);
+      }
+      
+      if(totalSize > 0) {
+    	  evStats.addAggreStat("time_per_record", String.valueOf(avgTime / totalSize));
+    	  evStats.addAggreStat("total_size", String.valueOf(totalSize));
+      } else {
+    	  evStats.addAggreStat("time_per_record", String.valueOf(0));
+    	  evStats.addAggreStat("total_size", String.valueOf(0));
+      }
+      evStatsSet.clear();
+      
+      return ret;
   }
   
 }

@@ -1766,10 +1766,14 @@ class MapTask extends Task {
 	  if (myEVStat.getSize() == 0){
 		  return;
 	  }
-	  int serverPort = conf.getInt("mapred.evstats.serverport", 10593);
+	  int serverPort = conf.getInt("mapred.evstats.serverport", 0);
+	  if (serverPort == 0) {
+		  LOG.fatal("Undefined EVStatsServer port!");
+		  return;
+	  }
 	  String servAddr = conf.get("mapred.job.tracker", "localhost:9001");
 	  servAddr = servAddr.substring(0, servAddr.lastIndexOf(":"));
-	  LOG.warn("sendEVStatsToJobStracker: " + servAddr + ":" + serverPort +
+	  LOG.warn("sendEVStatsToJob: " + servAddr + ":" + serverPort +
 			  " size = " + myEVStat.getSize());
 	  int reTry = 0;
 	  Socket dataSkt = null;
@@ -1781,6 +1785,8 @@ class MapTask extends Task {
 			dataSkt = new Socket(ia, serverPort);
 			output = new DataOutputStream(dataSkt.getOutputStream());
 			myEVStat.sendData(output);
+			myEVStat.clear();
+			break;
 		  } catch (UnknownHostException e) {
 			e.printStackTrace();
 		  } catch (IOException e) {

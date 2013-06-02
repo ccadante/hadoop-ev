@@ -12,19 +12,21 @@ import java.sql.SQLException;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.mapreduce.EVStatistics;
+import org.apache.hadoop.mapreduce.Job;
 
 public class EVStatsServer implements Runnable {
 	public static final Log LOG = LogFactory.getLog(EVStatsServer.class);
 	
 	JobTracker jobTracker;	
+	Job job;
 	ServerSocket serverSocket;
+	int port;
 	boolean running;
 	protected Thread listThread;
 	
 	/**
 	 * Process input from socket stream
 	 * @author xinfengli
-	 *
 	 */
 	class DataProcess implements Runnable {
 		EVStatsServer server;
@@ -51,9 +53,10 @@ public class EVStatsServer implements Runnable {
 					}
 					evStat.addTimeStat(contents[0], contents[1]);
 				}
-				LOG.warn("add EVStat into JobTracker with size = " + evStat.getSize() +
-						" value = " + evStat.getFirstStat());
-				server.jobTracker.addEVStats(evStat);
+				server.job.addEVStats(evStat);
+				//server.jobTracker.addEVStats(evStat);
+				LOG.warn("Added EVStat into Job with size = " + evStat.getSize() +
+						" first value = " + evStat.getFirstStat() + "us");
 			}
 			catch (Exception e) {
 				LOG.error(e.getMessage());
@@ -73,11 +76,26 @@ public class EVStatsServer implements Runnable {
 		}
 	}
 	
-	public EVStatsServer(int port, JobTracker tracker){
+	public EVStatsServer(int pt, JobTracker tracker){
 		try {
+			port = pt;
 			serverSocket = new ServerSocket(port);
 			running = true;
 			jobTracker = tracker;
+			LOG.info("EVStatsServer starts in port " + port);
+		}
+		catch (Exception e) {
+			LOG.error("Init failed: " + e.getMessage());			
+		}
+	}
+
+	public EVStatsServer(int pt, Job jb) {
+		try {
+			port = pt;
+			serverSocket = new ServerSocket(port);
+			running = true;
+			job = jb;
+			LOG.info("EVStatsServer starts in port " + port);
 		}
 		catch (Exception e) {
 			LOG.error("Init failed: " + e.getMessage());			
@@ -107,7 +125,7 @@ public class EVStatsServer implements Runnable {
 		listThread = new Thread(this);
 		running = true;
 		listThread.start();		
-		LOG.info("Server started.");
+		LOG.info("Server started at port " + port);
 		return running;
 	}
 	

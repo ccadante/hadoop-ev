@@ -29,6 +29,9 @@ import org.apache.hadoop.io.Text;
 import org.mortbay.log.Log;
 
 public class EVStatistics {
+	public Map<StatsType, Long> timeProfile = new HashMap<StatsType, Long>();
+	public Map<String, String> aggreStats = new HashMap<String, String>();
+	
 	class StatsType {
 		String type;
 		String value;
@@ -53,10 +56,48 @@ public class EVStatistics {
 		}
 	}
 	
-	Map<StatsType, Long> timeProfile = new HashMap<StatsType, Long>();
+	class Stats {
+		// NOTE: time in ms.
+		double avg;
+		double var;
+		long count;
+		double total;
+		double varTotal;
+		
+		public Stats () {
+			avg = var = count = 0;
+			total = varTotal = 0.0;
+		}
+		
+		public void addValue(long value) {
+			count++;
+			total += value / 1000.0;
+		}
+		
+		public void addDiff(long value) {
+			varTotal += Math.pow((value / 1000.0 - avg), 2);
+		}
+		
+		public void computeAvg() {
+			if (count > 0) {
+				avg = total / (double) count;
+			}
+		}
+		
+		public void computeVar() {
+			if (count > 0) {
+				var = varTotal / (double) count;
+			}
+		}
+	}
 	
 	public EVStatistics(){
 		timeProfile.clear();
+	}
+	
+	public void clear() {
+		timeProfile.clear();
+		aggreStats.clear();
 	}
 
 	public void addTimeStat(StatsType type, long time) {
@@ -65,6 +106,14 @@ public class EVStatistics {
 	
 	public void addTimeStat(String typeStr, String timeStr) {
 		timeProfile.put(new StatsType(typeStr), Long.parseLong(timeStr));
+	}
+	
+	public void addAggreStat(String key, String value) {
+		aggreStats.put(key, value);
+	}
+	
+	public String getAggreStat(String key) {
+		return aggreStats.get(key);
 	}
 
 	public int getSize() {
@@ -78,13 +127,23 @@ public class EVStatistics {
 		return -1;
 	}
 	
+	public long getAvgTime() {
+		long avg = 0;
+		for (Long value : timeProfile.values()) {
+			avg += value;
+		}
+		avg = avg / timeProfile.size();
+		return avg;
+	}
+	
+	// Transmitting data via Socket
 	public void sendData(DataOutputStream output) throws IOException{
 		output.writeBytes(getSize() + "\n");
 		for (StatsType key : timeProfile.keySet()) {
 			String content = key.toString() + ";" + timeProfile.get(key);
 			output.writeBytes(content + "\n");
 		}	
-		Log.warn("SendData done.");
+		//Log.warn("SendData done.");
 	}
 
 	//////////////////////////////////////////////
