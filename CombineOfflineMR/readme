@@ -1,0 +1,8 @@
+Platform compatability between system, hadoop and opencv(Java 6 or 7, 32bit or 64bit)
+
+jar cvf offline.jar -C bin .
+
+Native .so dynamic link file
+copyFromLocal opencv_dir/build/bin/libopencv_java244.so to hafs://master:9000/libraries/libopencv_java244.so
+
+hadoop jar combineoffline.jar myorg.offline.CombineOfflineMR -libjars path/to/opencv-244.jar -files path/to/cars3.xml imgsamples/16m_1,imgsamples/16m_2 output_dir
