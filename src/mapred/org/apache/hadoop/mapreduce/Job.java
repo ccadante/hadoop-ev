@@ -587,35 +587,54 @@ public class Job extends JobContext {
 	  String [] list = StringUtils.split(dirs);
 	  
 	  // Get time constraint.
-	  int timeConstraint = this.getConfiguration().getInt("mapred.deadline.second", 200);
-	  long deadline = System.currentTimeMillis() + timeConstraint * 1000;
+	  int timeConstraint = this.getConfiguration().getInt("mapred.deadline.second", 180);
+	  // Get trial/initial sample rounds number.
+	  int initSampleRound = this.getConfiguration().getInt("mapred.sample.initround", 2);
+	  // Get trial/initial rounds sample unit size.
+	  int initSampleSize = this.getConfiguration().getInt("mapred.sample.initsize", 20);
+	  
+	  long deadline = System.currentTimeMillis() + timeConstraint * 1000; // in millisecond
 	  LOG.info("Deadline: " + deadline + " (" + timeConstraint + "s)");
 	  
 	  Configuration conf = this.getConfiguration();
 	  InputFormat<?, ?> input = ReflectionUtils.newInstance(this.getInputFormatClass(), conf);
 
 	  List<FileStatus> files = ((FileInputFormat)input).getListStatus(this);
+	  long N = files.size();
 	  int runCount = 0;
+	  long timer = System.currentTimeMillis();
 	  // loop until deadline.
 	  while(System.currentTimeMillis() < deadline)
-	  {		  
-		  LOG.info("To deadline: " + (deadline - System.currentTimeMillis()) + " ms");
+	  {		
 		  runCount++;
-		  Map<String, Double> proportion = processEVStats();
-		  long avgTime = Long.valueOf(evStats.getAggreStat("time_per_record"));
-		  int totalSize = Integer.valueOf(evStats.getAggreStat("total_size")); 
+		  long totalTimeCost = System.currentTimeMillis() - timer;
+		  timer = System.currentTimeMillis();
+		  long extraCost = 0;
+		  LOG.info("To deadline: " + (deadline - System.currentTimeMillis()) + " ms");
+		  
+		  Map<String, Double> proportion = null;
 		  int nextSize = 1;
-		  if (runCount < 3) {
-			  nextSize = 10 * runCount;
+		  if (runCount <= initSampleRound) {
+			  nextSize = runCount * initSampleSize;
 		  } else {
+			  proportion = processEVStats();
+			  long avgTime = Long.valueOf(evStats.getAggreStat("time_per_record")); // in microsecond
+			  int totalSize = Integer.valueOf(evStats.getAggreStat("total_size")); 			  
 			  // Now, nextSize is simply determined by the average time cost of previous 
 			  // Map execution. Current simple estimation is not accurate as extra overhead
 			  // is ignored. 
 			  if (avgTime > 0) {
-				  nextSize = (int) ((deadline - System.currentTimeMillis()) * 1000000 / avgTime);
+				  extraCost = totalTimeCost - avgTime / 1000 * totalSize; // in millisecond
+				  nextSize = (int) ((deadline - System.currentTimeMillis() - extraCost) * 1000 / avgTime);
 			  }
+			  LOG.info("avgCost = " + avgTime/1000 + 
+					  "ms ; recordSize = " + totalSize + " ; extraCost = " + extraCost + "ms");
 		  }
-		  LOG.info("Next sample size = " + nextSize + "\t" + avgTime + " : " + totalSize);
+		  LOG.info("Next sampleSize = " + nextSize);		
+		  if (nextSize <= 0) {
+			  LOG.info("Quit!");
+			  break;
+		  }
 		  List<String> inputfile =  RandomSample(files,  nextSize, proportion);
 		  Job newjob = new Job(this.getConfiguration(), "sample_" + runCount);
 		  LOG.info(newjob.getJar() + " " + list.length);
@@ -627,7 +646,12 @@ public class Job extends JobContext {
 		  }
 			
 		  newjob.waitForCompletion(true);
+		  
+		  double[] results = processReduceResults(inputfile.size(), N, OpType.AVG);
+		  LOG.info("RESULT ESTIMATION: sum(avg(Loc)) = " + results[0] + "+-" + results[1] + 
+				  " (95% confidence).");
 	  }
+	  LOG.info("After deadline: " + (System.currentTimeMillis() - deadline) + "ms");
 	  return true;
   }
   
@@ -654,7 +678,7 @@ public class Job extends JobContext {
   // Get file list based on the proportion of different dimensions (i.e., location).
   private List<String> RandomSample(List<FileStatus> files, int num, Map<String, Double> proportion)
   {
-	  if (proportion.size() == 0) {
+	  if (proportion == null || proportion.size() == 0) {
 		  return RandomSample(files, num);
 	  }
 	  if (num > files.size())
@@ -700,6 +724,7 @@ public class Job extends JobContext {
  
   Set<EVStatistics> evStatsSet = new HashSet<EVStatistics>();
   EVStatistics evStats = new EVStatistics();
+  ArrayList<ArrayList<Double>> reduceResults = new ArrayList<ArrayList<Double>>(); 
   
   /**
    * Add one piece of EVStats into the global set.
@@ -712,7 +737,7 @@ public class Job extends JobContext {
 	  }
 	  synchronized (Job.this){
 		  evStatsSet.add(evStat);
-		  LOG.warn("addEVStats size = " + evStatsSet.size());
+		  LOG.warn("addEVStats set size = " + evStatsSet.size());
 	  }
   }
   
@@ -756,7 +781,7 @@ public class Job extends JobContext {
       for (String key : final_stat.keySet()) {
     	  final_stat.get(key).computeVar();
     	  total += final_stat.get(key).var;
-    	  LOG.info(key + "\t" + final_stat.get(key).avg + "  " + final_stat.get(key).var + " " +
+    	  LOG.info(key + "\tavg=" + final_stat.get(key).avg + "  var=" + final_stat.get(key).var + " count=" +
     			  final_stat.get(key).count);
       }
       Map<String, Double> ret = new HashMap<String, Double>();
@@ -776,4 +801,30 @@ public class Job extends JobContext {
       return ret;
   }
   
+  /**
+   * Adds the results of Reducer like value and variance into local stats.
+   * @param final_val
+   * @param final_var
+   */
+  public void addReduceResults(ArrayList<Double> final_val, ArrayList<Double> final_var) {
+	  reduceResults.add(final_val);
+	  reduceResults.add(final_var);
+  }
+  
+  public enum OpType {AVG, COUNT, SUM}
+  
+  public double[] processReduceResults(long n, long N, OpType op) {
+	  if (op == OpType.AVG && reduceResults.size() > 1) {
+		  double final_sum = 0;
+		  double final_var = 0;
+		  for (int i=0; i<reduceResults.get(0).size(); i++) {
+			  final_sum += reduceResults.get(0).get(i);
+			  final_var += reduceResults.get(1).get(i);
+		  }
+		  final_var = final_var / reduceResults.get(0).size();
+		  double error = Math.sqrt(final_var) * 1.96; // 1.65 std err = 90%; 1.96 std err = 95%; 2.58 std err = 99%;
+		  return new double[]{final_sum, error};
+	  }
+	  return new double[] {0.0, 0.0};
+  }
 }

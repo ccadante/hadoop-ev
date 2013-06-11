@@ -138,6 +138,7 @@ public class EVStatistics {
 	
 	// Transmitting data via Socket
 	public void sendData(DataOutputStream output) throws IOException{
+		output.writeBytes(0 + "\n"); // Write data type first.
 		output.writeBytes(getSize() + "\n");
 		for (StatsType key : timeProfile.keySet()) {
 			String content = key.toString() + ";" + timeProfile.get(key);

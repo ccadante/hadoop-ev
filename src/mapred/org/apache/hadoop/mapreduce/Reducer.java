@@ -19,10 +19,12 @@
 package org.apache.hadoop.mapreduce;
 
 import java.io.IOException;
+import java.util.ArrayList;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.io.RawComparator;
 import org.apache.hadoop.mapred.RawKeyValueIterator;
+import org.mortbay.log.Log;
 
 /** 
  * Reduces a set of intermediate values which share a key to a smaller set of
@@ -119,6 +121,8 @@ public class Reducer<KEYIN,VALUEIN,KEYOUT,VALUEOUT> {
 
   public class Context 
     extends ReduceContext<KEYIN,VALUEIN,KEYOUT,VALUEOUT> {
+	  ArrayList<Double> final_vals = new ArrayList<Double>();
+	  ArrayList<Double> final_vars = new ArrayList<Double>();
     public Context(Configuration conf, TaskAttemptID taskid,
                    RawKeyValueIterator input, 
                    Counter inputKeyCounter,
@@ -133,6 +137,24 @@ public class Reducer<KEYIN,VALUEIN,KEYOUT,VALUEOUT> {
       super(conf, taskid, input, inputKeyCounter, inputValueCounter,
             output, committer, reporter, 
             comparator, keyClass, valueClass);
+    }
+    
+    public void write(KEYOUT key, VALUEOUT value, double var
+    		) throws IOException, InterruptedException {
+    	super.write(key, value);
+    	final_vals.add(Double.parseDouble(value.toString()));
+    	final_vars.add(var);
+	}
+    
+    public ArrayList<ArrayList<Double>> getValueVar() {
+    	Log.info("getValueVar: " + final_vals.size());
+    	if (final_vals.size() == 0) {
+    		return null;
+    	}
+    	ArrayList<ArrayList<Double>> ret = new ArrayList<ArrayList<Double>>();
+    	ret.add(final_vals);
+    	ret.add(final_vars);
+    	return ret;
     }
   }
 

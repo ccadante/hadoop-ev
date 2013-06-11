@@ -771,7 +771,7 @@ class MapTask extends Task {
       input.initialize(split, mapperContext);
       mapper.run(mapperContext);
       myEVStat = mapperContext.getEVStats();
-      sendEVStatsToJobStracker();
+      sendEVStatsToJob();
       LOG.warn("Get EVStatistics with size of " + myEVStat.getSize() + 
     		  " and one value as " + myEVStat.getFirstStat());
       input.close();
@@ -1762,7 +1762,7 @@ class MapTask extends Task {
     }
   }
 
-  private void sendEVStatsToJobStracker(){
+  private void sendEVStatsToJob(){
 	  if (myEVStat.getSize() == 0){
 		  return;
 	  }

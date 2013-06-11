@@ -20,14 +20,18 @@ package org.apache.hadoop.mapred;
 
 import java.io.DataInput;
 import java.io.DataOutput;
+import java.io.DataOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.net.InetAddress;
+import java.net.Socket;
 import java.net.URI;
 import java.net.URL;
 import java.net.URLClassLoader;
 import java.net.URLConnection;
+import java.net.UnknownHostException;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -647,6 +651,11 @@ class ReduceTask extends Task {
                                                reporter, comparator, keyClass,
                                                valueClass);
     reducer.run(reducerContext);
+    ArrayList<ArrayList<Double>> results = reducerContext.getValueVar();
+    LOG.info("runNewReducer: results=" + results.size());
+    if (results != null) {
+    	sendReduceResultToJob(results);
+    }
     trackedRW.close(reducerContext);
   }
 
@@ -2926,5 +2935,62 @@ class ReduceTask extends Task {
     final int hob = Integer.highestOneBit(value);
     return Integer.numberOfTrailingZeros(hob) +
       (((hob >>> 1) & value) == 0 ? 0 : 1);
+  }
+  
+  private void sendReduceResultToJob(ArrayList<ArrayList<Double>> results){
+	  if (results.size() < 2) {
+		  LOG.warn("Invalid Reduce result format!");
+		  return;
+	  }
+	  int serverPort = conf.getInt("mapred.evstats.serverport", 0);
+	  if (serverPort == 0) {
+		  LOG.fatal("Undefined EVStatsServer port!");
+		  return;
+	  }
+	  String servAddr = conf.get("mapred.job.tracker", "localhost:9001");
+	  servAddr = servAddr.substring(0, servAddr.lastIndexOf(":"));
+	  LOG.warn("sendReduceResultToJob: " + servAddr + ":" + serverPort +
+			  " value = " + results.toString());
+	  int reTry = 0;
+	  Socket dataSkt = null;
+	  DataOutputStream output = null;
+	  while (reTry < 3){
+		  reTry++;
+		  try {
+			InetAddress ia = InetAddress.getByName(servAddr); // server address
+			dataSkt = new Socket(ia, serverPort);
+			output = new DataOutputStream(dataSkt.getOutputStream());
+			output.writeBytes(1 + "\n"); // Write data type first.
+			output.writeBytes(results.get(0).size() + "\n");
+			for (int i=0; i<results.get(0).size(); i++) {
+				String content = results.get(0).get(i) + ";" + results.get(1).get(i);
+				output.writeBytes(content + "\n");
+			}
+			break;
+		  } catch (UnknownHostException e) {
+			e.printStackTrace();
+		  } catch (IOException e) {
+			e.printStackTrace();
+		  }
+		  finally {
+			  try {
+				  if (output != null)
+					  output.close();
+				  if (dataSkt != null)
+					  dataSkt.close();
+				}
+				catch (Exception e) {
+					LOG.error(e.getMessage());
+				}
+				finally {
+					dataSkt = null;
+				}
+		  }
+		try {
+			Thread.sleep(100);
+		}  catch (InterruptedException e) {
+			e.printStackTrace();
+		}
+	  }
   }
 }

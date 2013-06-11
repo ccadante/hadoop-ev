@@ -8,6 +8,7 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.nio.channels.ClosedByInterruptException;
 import java.sql.SQLException;
+import java.util.ArrayList;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -42,21 +43,46 @@ public class EVStatsServer implements Runnable {
 			try {
 				BufferedReader ipt = new BufferedReader(new InputStreamReader(
 						socket.getInputStream()));
-				int stats_size = Integer.valueOf(ipt.readLine());
-				EVStatistics evStat = new EVStatistics();
+				int state = Integer.valueOf(ipt.readLine());
+				int data_size = Integer.valueOf(ipt.readLine());
+				EVStatistics evStat = null;
+				ArrayList<Double> final_val = null;
+				ArrayList<Double> final_var = null;
+				if (state == 0)
+					evStat = new EVStatistics();
+				else if (state == 1) {
+					final_val = new ArrayList<Double>();
+					final_var = new ArrayList<Double>();
+				}
 				String stat_piece;
 				while((stat_piece = ipt.readLine()) != null){
-					String[] contents = stat_piece.split(";");
-					if (contents.length != 2) {
-						LOG.warn("Invalid EVStat format.");
-						continue;
+					if (state == 0) { // EVStat data
+						String[] contents = stat_piece.split(";");
+						if (contents.length != 2) {
+							LOG.warn("Invalid EVStat format.");
+							continue;
+						}
+						evStat.addTimeStat(contents[0], contents[1]);
+					} else if (state == 1) { // Reduce results
+						String[] contents = stat_piece.split(";");
+						if (contents.length != 2) {
+							LOG.warn("Invalid ReduceResult format.");
+							continue;
+						}
+						final_val.add(Double.parseDouble(contents[0]));
+						final_var.add(Double.parseDouble(contents[1]));
 					}
-					evStat.addTimeStat(contents[0], contents[1]);
 				}
-				server.job.addEVStats(evStat);
-				//server.jobTracker.addEVStats(evStat);
-				LOG.warn("Added EVStat into Job with size = " + evStat.getSize() +
-						" first value = " + evStat.getFirstStat() + "us");
+				if (state == 0) {
+					server.job.addEVStats(evStat);
+					//server.jobTracker.addEVStats(evStat);
+					LOG.warn("Added EVStat into Job with size = " + evStat.getSize() +
+							"  and one value = " + evStat.getFirstStat() + "us");
+				} else if (state == 1) {
+					server.job.addReduceResults(final_val, final_var);
+					LOG.warn("Added Result into Job with size = " + final_val.size() +
+							" and one value = " + final_val.get(0));
+				}
 			}
 			catch (Exception e) {
 				LOG.error(e.getMessage());
