@@ -33,7 +33,9 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileStatus;
+import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.hdfs.DistributedFileSystem;
 import org.apache.hadoop.io.IntWritable;
 import org.apache.hadoop.io.RawComparator;
 import org.apache.hadoop.io.Text;
@@ -635,9 +637,19 @@ public class Job extends JobContext {
 			  LOG.info("Quit!");
 			  break;
 		  }
-		  List<String> inputfile =  RandomSample(files,  nextSize, proportion);
+		  // get the files total size in a sample and determine the proper split size
+		  List<String> inputfile = new ArrayList<String>();
+		  Long sample_len =  RandomSample(files,  nextSize, proportion, inputfile);
+		  DistributedFileSystem hdfs = (DistributedFileSystem)(FileSystem.get(this.getConfiguration()));
+		  int datanode_num = hdfs.getDataNodeStats().length;
+		  int max_mapnum = this.getConfiguration().getInt("mapred.tasktracker.map.tasks.maximum", 2);
+		  int max_slotnum = datanode_num*max_mapnum;
+		  Long splitsize = sample_len/max_slotnum;
+		  LOG.info("max slot number = " + max_slotnum + "; split size = " + splitsize);
+		  
 		  Job newjob = new Job(this.getConfiguration(), "sample_" + runCount);
 		  LOG.info(newjob.getJar() + " " + list.length);
+		  newjob.getConfiguration().set("mapreduce.input.fileinputformat.split.maxsize", splitsize.toString());
 		  FileOutputFormat.setOutputPath(newjob, new Path(this.getConfiguration().get(("mapred.output.dir")) + "_" + runCount));
 		  FileInputFormat.setInputPaths(newjob, new Path(inputfile.get(0)));
 		  for (int j=1; j<inputfile.size(); j++)
@@ -659,31 +671,39 @@ public class Job extends JobContext {
    * Random sample num files from a FileStatus List
    * @param files
    * @param num
-   * @return
+   * @param re_list
+   * @return the size in Bytes of all files in res_list
    */
-  private List<String> RandomSample(List<FileStatus> files, int num)
+  private Long RandomSample(List<FileStatus> files, int num, List<String> res_list)
   {
 	  if (num > files.size())
 		  num = files.size();
-	  List<String> res = new ArrayList<String>();
 	  Random rand = new Random();
+	  Long sample_len = new Long(0);
 	  for(int i=0; i<num; i++)
 	  {
 		  int idx = rand.nextInt(files.size()-1);
-		  res.add(HDFStoLocalConvert(files.get(idx).getPath().toString()));
+		  res_list.add(HDFStoLocalConvert(files.get(idx).getPath().toString()));
+		  sample_len += files.get(idx).getLen();
 	  }
-	  return res;
+	  return sample_len;
   }
   
-  // Get file list based on the proportion of different dimensions (i.e., location).
-  private List<String> RandomSample(List<FileStatus> files, int num, Map<String, Double> proportion)
+  /**
+   * Get file list based on the proportion of different dimensions (i.e., location).
+   * @param files
+   * @param num
+   * @param proportion
+   * @param res_list
+   * @return
+   */
+  private Long RandomSample(List<FileStatus> files, int num, Map<String, Double> proportion, List<String> res_list)
   {
 	  if (proportion == null || proportion.size() == 0) {
-		  return RandomSample(files, num);
+		  return RandomSample(files, num, res_list);
 	  }
 	  if (num > files.size())
 		  num = files.size();
-	  List<String> res = new ArrayList<String>();
 	  Map<String, Double> sizeProportion = new HashMap<String, Double>();
 	  for (String key : proportion.keySet()) {
 		  sizeProportion.put(key, num * proportion.get(key));
@@ -691,6 +711,7 @@ public class Job extends JobContext {
 	  }
 	  int count = num;
 	  Random rand = new Random();
+	  Long sample_len = new Long(0);
 	  while(count > 0.99)
 	  {
 		  int idx = rand.nextInt(files.size()-1);
@@ -698,13 +719,14 @@ public class Job extends JobContext {
 		  for (String key : sizeProportion.keySet()) {
 			  if (filename.contains(key) && sizeProportion.get(key) >= 1.0) {
 				  proportion.put(key, proportion.get(key) - 1.0); // decrease one from quota
-				  res.add(filename);
+				  res_list.add(filename);
+				  sample_len += files.get(idx).getLen();
 				  count--;
 				  break;
 			  }
 		  }
 	  }
-	  return res;
+	  return sample_len;
   }
   
   /**
