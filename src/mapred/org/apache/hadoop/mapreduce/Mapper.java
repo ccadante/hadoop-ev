@@ -122,7 +122,7 @@ public class Mapper<KEYIN, VALUEIN, KEYOUT, VALUEOUT> {
     	lastKeyIn = super.getCurrentKey();
     	//lastValueIn = super.getCurrentValue();
     	//lastKeyOut = key;
-    	//lastValueOut = value;
+    	lastValueOut = value;
 	}
     
     /**
@@ -133,7 +133,16 @@ public class Mapper<KEYIN, VALUEIN, KEYOUT, VALUEOUT> {
     	if(myEVStat == null)
     		myEVStat = new EVStatistics();
     	myEVStat.addTimeStat(myEVStat.new StatsType(
-    			lastKeyIn.getClass().getName(), lastKeyIn.toString()), time);
+    		lastKeyIn.getClass().getName(), lastKeyIn.toString()), time);
+    }
+    
+    /**
+     * add a record processing result to myEVStat
+     */
+    public void addCache(){
+    	if(myEVStat == null)
+    		myEVStat = new EVStatistics();
+    	myEVStat.addCacheItem(lastKeyIn.toString(), lastValueOut.toString());
     }
     
     public EVStatistics getEVStats(){
@@ -176,10 +185,11 @@ public class Mapper<KEYIN, VALUEIN, KEYOUT, VALUEOUT> {
   public void run(Context context) throws IOException, InterruptedException {
     setup(context);
     while (context.nextKeyValue()) {
-    	long t1 = System.nanoTime();
+      long t1 = System.nanoTime();
       map(context.getCurrentKey(), context.getCurrentValue(), context);
       long t2 = System.nanoTime();
       context.addStat((t2 - t1)/1000); // in microsecond
+      context.addCache();
     }
     cleanup(context);
   }

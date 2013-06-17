@@ -22,7 +22,7 @@
   <import file="../build-contrib.xml"/>
 
   <path id="eclipse-sdk-jars">
-    <fileset dir="/home/xinfengli/Downloads/eclipse/plugins/">
+    <fileset dir="/home/fan/Application/eclipse/plugins/">
       <include name="org.eclipse.ui*.jar"/>
       <include name="org.eclipse.jdt*.jar"/>
       <include name="org.eclipse.core*.jar"/>

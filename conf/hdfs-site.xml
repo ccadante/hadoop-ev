@@ -4,8 +4,13 @@
 <!-- Put site-specific property overrides in this file. -->
 
 <configuration>
-     <property>
-         <name>dfs.replication</name>
-         <value>1</value>
-     </property>
+    <property>
+        <name>dfs.replication</name>
+        <value>1</value>
+    </property>
+	<property>
+		<name>dfs.support.append</name>
+		<value>true</value>
+		<description>Does HDFS allow appends to files? This is currently set to false because there are bugs in the "append code" and is not supported in any prodction cluster.</description>
+	</property>
 </configuration>

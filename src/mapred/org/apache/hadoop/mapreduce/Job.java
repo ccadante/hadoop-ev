@@ -589,7 +589,7 @@ public class Job extends JobContext {
 	  String [] list = StringUtils.split(dirs);
 	  
 	  // Get time constraint.
-	  int timeConstraint = this.getConfiguration().getInt("mapred.deadline.second", 180);
+	  int timeConstraint = this.getConfiguration().getInt("mapred.deadline.second", 120);
 	  // Get trial/initial sample rounds number.
 	  int initSampleRound = this.getConfiguration().getInt("mapred.sample.initround", 1);
 	  // Get trial/initial rounds sample unit size.
@@ -616,6 +616,8 @@ public class Job extends JobContext {
 	  long N = files.size(); // Total input records size.
 	  int runCount = 0;
 	  long timer = System.currentTimeMillis();
+	  
+	  LOG.info("File number = " + N);
 	  // loop until deadline.
 	  while(System.currentTimeMillis() < deadline)
 	  {		
@@ -856,8 +858,12 @@ public class Job extends JobContext {
   private Long RandomSampleWithDirs(List<FileStatus> files, Path filePaths[],
 		  int num, List<String> res_list) {
 	  Map<String, Stats> sizeProportion = new HashMap<String, Stats>();
-	  for (Path p: filePaths) {
-		  String loc = GetFolderFromFullPath(p.toString());
+//	  for (Path p: filePaths) {
+//		  String loc = GetFolderFromFullPath(p.toString());
+	  for(int i=0; i<files.size(); i++)
+	  {
+		  String loc = GetFolderFromFullPath(files.get(i).getPath().toString());
+//		  LOG.info("loc = " + files.get(i).getPath().toString());
 		  Stats newStats = evStats.new Stats();
 		  newStats.var = 1.0;
 		  sizeProportion.put(loc, newStats); // average among directories.

@@ -22,15 +22,21 @@ import java.io.DataInput;
 import java.io.DataOutput;
 import java.io.DataOutputStream;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import org.apache.hadoop.io.Text;
+import org.apache.hadoop.mapreduce.EVStatistics.CacheItem;
 import org.mortbay.log.Log;
 
 public class EVStatistics {
 	public Map<StatsType, Long> timeProfile = new HashMap<StatsType, Long>();
 	public Map<String, String> aggreStats = new HashMap<String, String>();
+	
+	// A cache for a mapper task
+	public List<CacheItem> cacheList = new ArrayList<CacheItem>();
 	
 	// The type of stats, for example, location:1, time:2.
 	class StatsType {
@@ -93,6 +99,18 @@ public class EVStatistics {
 		}
 	}
 	
+	// An (key,value) item in cache
+	public class CacheItem {
+		public String key;
+		public String value;
+		
+		public CacheItem(String k, String v) {
+			key = k;
+			value = v;
+		}
+	}
+	
+	
 	public EVStatistics(){
 		timeProfile.clear();
 	}
@@ -138,14 +156,29 @@ public class EVStatistics {
 		return avg;
 	}
 	
+	/**
+	 * add a (key,value) pair to hash-table cache of the mapper task
+	 * @param key
+	 * @param value
+	 */
+	public void addCacheItem(String key, String value) {
+		cacheList.add(new CacheItem(key, value));
+	}
+	
 	// Transmitting data via Socket
 	public void sendData(DataOutputStream output) throws IOException{
 		output.writeBytes(0 + "\n"); // Write data type first.
 		output.writeBytes(getSize() + "\n");
 		for (StatsType key : timeProfile.keySet()) {
-			String content = key.toString() + ";" + timeProfile.get(key);
+			String content = "0" + ";" + key.toString() + ";" + timeProfile.get(key);
+			Log.info("statistic content: " + content);
 			output.writeBytes(content + "\n");
 		}	
+		for (CacheItem ci : cacheList)	{
+			String content = "1" + ";" + ci.key + ";" + ci.value;
+			Log.info("cache content: " + content);
+			output.writeBytes(content + "\n");
+		}
 		//Log.warn("SendData done.");
 	}
 
