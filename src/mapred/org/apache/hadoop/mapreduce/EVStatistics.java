@@ -32,6 +32,7 @@ public class EVStatistics {
 	public Map<StatsType, Long> timeProfile = new HashMap<StatsType, Long>();
 	public Map<String, String> aggreStats = new HashMap<String, String>();
 	
+	// The type of stats, for example, location:1, time:2.
 	class StatsType {
 		String type;
 		String value;
@@ -56,6 +57,7 @@ public class EVStatistics {
 		}
 	}
 	
+	// The real number stats.
 	class Stats {
 		// NOTE: time in ms.
 		double avg;
@@ -71,11 +73,11 @@ public class EVStatistics {
 		
 		public void addValue(long value) {
 			count++;
-			total += value / 1000.0;
+			total += value;
 		}
 		
 		public void addDiff(long value) {
-			varTotal += Math.pow((value / 1000.0 - avg), 2);
+			varTotal += Math.pow((value - avg), 2);
 		}
 		
 		public void computeAvg() {

@@ -80,7 +80,7 @@ public class EVStatsServer implements Runnable {
 							"  and one value = " + evStat.getFirstStat() + "us");
 				} else if (state == 1) {
 					server.job.addReduceResults(final_val, final_var);
-					LOG.warn("Added Result into Job with size = " + final_val.size() +
+					LOG.warn("Added ReduceResult into Job with size = " + final_val.size() +
 							" and one value = " + final_val.get(0));
 				}
 			}
