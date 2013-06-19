@@ -21,9 +21,10 @@ package org.apache.hadoop.mapreduce;
 import java.io.IOException;
 import java.security.PrivilegedExceptionAction;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
@@ -44,6 +45,7 @@ import org.apache.hadoop.mapreduce.EVStatistics.StatsType;
 import org.apache.hadoop.mapreduce.TaskAttemptID;
 import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
+import org.apache.hadoop.mapred.DirUtil;
 import org.apache.hadoop.mapred.EVStatsServer;
 import org.apache.hadoop.mapred.JobClient;
 import org.apache.hadoop.mapred.JobConf;
@@ -73,6 +75,9 @@ public class Job extends JobContext {
   private int portEVStatsServer; 
   private static EVStatsServer evStatsServer;
 
+  //A integer indicating the number of DataProcesses in EVStatsServer
+  public int dpInProc = 0;
+  
   public Job() throws IOException {
     this(new Configuration());
   }
@@ -85,7 +90,7 @@ public class Job extends JobContext {
 	    this.portEVStatsServer = 10593 + rand.nextInt(1000);
 	    getConfiguration().setInt("mapred.evstats.serverport", portEVStatsServer);
 	    evStatsServer = new EVStatsServer(this.portEVStatsServer, this);
-	    evStatsServer.start();	    
+	    evStatsServer.start();	  
 	  }    
   }
 
@@ -589,11 +594,11 @@ public class Job extends JobContext {
 	  String [] list = StringUtils.split(dirs);
 	  
 	  // Get time constraint.
-	  int timeConstraint = this.getConfiguration().getInt("mapred.deadline.second", 120);
+	  int timeConstraint = this.getConfiguration().getInt("mapred.deadline.second", 150);
 	  // Get trial/initial sample rounds number.
 	  int initSampleRound = this.getConfiguration().getInt("mapred.sample.initround", 1);
 	  // Get trial/initial rounds sample unit size.
-	  int initSampleSize = this.getConfiguration().getInt("mapred.sample.initsize", 20);
+	  int initSampleSize = this.getConfiguration().getInt("mapred.sample.initsize", 60);
 	  // Get number of Map slots in the cluster.
 	  DistributedFileSystem hdfs = (DistributedFileSystem)(FileSystem.get(this.getConfiguration()));
 	  int datanode_num = hdfs.getDataNodeStats().length;
@@ -613,6 +618,7 @@ public class Job extends JobContext {
 
 	  List<FileStatus> files = ((FileInputFormat)input).getListStatus(this);
 	  Path filePaths[] = ((FileInputFormat)input).getInputPaths(this);
+	  
 	  long N = files.size(); // Total input records size.
 	  int runCount = 0;
 	  long timer = System.currentTimeMillis();
@@ -681,6 +687,8 @@ public class Job extends JobContext {
 		  LOG.info("After deadline: " + Math.abs(timeDiff) + "ms");
 	  else
 		  LOG.info("Before deadline: " + Math.abs(timeDiff) + "ms");
+	  
+	  while (dpInProc > 0) {}
 	  return true;
   }
   
@@ -774,7 +782,7 @@ public class Job extends JobContext {
 	  {
 		  int idx = rand.nextInt(files.size());
 		  String filename = HDFStoLocalConvert(files.get(idx).getPath().toString());
-		  String folder = GetFolderFromFullPath(filename);
+		  String folder = DirUtil.GetLast2ndSeg(filename);
 		  boolean isChosen = false;
 		  if (useMHSampling) { // MH sampling algorithm
 			  String cur_variable = folder;
@@ -862,7 +870,7 @@ public class Job extends JobContext {
 //		  String loc = GetFolderFromFullPath(p.toString());
 	  for(int i=0; i<files.size(); i++)
 	  {
-		  String loc = GetFolderFromFullPath(files.get(i).getPath().toString());
+		  String loc = DirUtil.GetLast2ndSeg(files.get(i).getPath().toString());
 //		  LOG.info("loc = " + files.get(i).getPath().toString());
 		  Stats newStats = evStats.new Stats();
 		  newStats.var = 1.0;
@@ -1019,4 +1027,87 @@ public class Job extends JobContext {
 	  }
 	  return new double[] {0.0, 0.0};
   }
+  
+  /**
+   * 
+   * A file status list class
+   * @author fan
+   *
+   */
+  class FileStatusList
+  {
+	  public List<FileStatus> mlist;
+	  
+	  public FileStatusList(FileStatus fs)
+	  {
+		  mlist = new ArrayList<FileStatus>();
+		  mlist.add(fs);
+	  }
+	  
+	  public void Add(FileStatus fs)
+	  {
+		  mlist.add(fs);
+	  }
+	  
+	  public void Sort()
+	  {
+		  Collections.sort(mlist, new FileComparator());
+	  }
+	  
+	  public class FileComparator implements Comparator<FileStatus>
+	  {
+		  public int compare(FileStatus f1, FileStatus f2)
+		  {
+			  String fs1 = f1.getPath().toString();
+			  String fs2 = f2.getPath().toString();
+			  long fn1 = Long.parseLong(fs1.substring(fs1.lastIndexOf("/")+1, fs1.lastIndexOf(".")));
+			  long fn2 = Long.parseLong(fs2.substring(fs2.lastIndexOf("/")+1, fs2.lastIndexOf(".")));
+			  long diff = fn1 - fn2;
+			  return (int)diff;
+		  }
+	  }
+  }
+  
+  /**
+   * Reorganize the input files
+   * @param input
+   * @return a map of (folder, sorted filename list)
+   */
+  Map<String, FileStatusList> ReorganizeInput(List<FileStatus> input)
+  {
+	  Map<String, FileStatusList> retmap = new HashMap<String, FileStatusList>();
+	  for(FileStatus fs : input)
+	  {
+		  String folder = DirUtil.GetLast2ndSeg(fs.getPath().toString());
+		  FileStatusList fsl = retmap.get(folder);
+		  if (fsl == null)
+		  {
+			  FileStatusList newfsl = new FileStatusList(fs);
+			  retmap.put(folder, newfsl);
+		  }
+		  else
+		  {
+			  fsl.Add(fs);
+		  }
+	  }
+	  for (FileStatusList value : retmap.values())
+	  {
+		  value.Sort();
+	  }
+	  return retmap;
+  }
+  
+//  public List<FileStatus> CacheFilter(List<FileStatus> input)
+//  {
+//  }
+  
+  /**
+   * Preprocess input list, input reordering, cache hitting and cached result convey
+   * @param input
+   */
+  public void InputPreproc(List<FileStatus> input)
+  {
+	  Map<String, FileStatusList> inputmap = ReorganizeInput(input);
+  }
+  
 }

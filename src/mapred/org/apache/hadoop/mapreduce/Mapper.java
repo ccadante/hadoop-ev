@@ -18,13 +18,21 @@
 
 package org.apache.hadoop.mapreduce;
 
+
 import java.io.IOException;
+import java.util.Map;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.FSDataInputStream;
+import org.apache.hadoop.fs.FileSystem;
+import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.io.IntWritable;
 import org.apache.hadoop.io.RawComparator;
+import org.apache.hadoop.io.Text;
 import org.apache.hadoop.io.compress.CompressionCodec;
+import org.apache.hadoop.mapred.DirUtil;
 import org.apache.hadoop.mapreduce.EVStatistics.StatsType;
 
 /** 
@@ -185,12 +193,56 @@ public class Mapper<KEYIN, VALUEIN, KEYOUT, VALUEOUT> {
   public void run(Context context) throws IOException, InterruptedException {
     setup(context);
     while (context.nextKeyValue()) {
-      long t1 = System.nanoTime();
-      map(context.getCurrentKey(), context.getCurrentValue(), context);
-      long t2 = System.nanoTime();
-      context.addStat((t2 - t1)/1000); // in microsecond
-      context.addCache();
+      /* cache begin*/
+      String[] cacheres = FindCacheResult(context.getCurrentKey().toString(), context);
+      if(cacheres != null)
+      {
+    	  LOG.info("Cache hit: " + context.getCurrentKey().toString());
+    	  context.write((KEYOUT)(new Text(cacheres[0])), 
+    			  (VALUEOUT)(new IntWritable(Integer.parseInt(cacheres[1]))));
+      }
+      /* cache end*/
+      else
+      {
+	      long t1 = System.nanoTime();
+	      map(context.getCurrentKey(), context.getCurrentValue(), context);
+	      long t2 = System.nanoTime();
+	      context.addStat((t2 - t1)/1000); // in microsecond
+	      context.addCache();
+      }
     }
     cleanup(context);
+  }
+  
+  /**
+   * Find the cached result, if not cached, return null
+   * @param key
+   * @param context
+   * @return String tuple {filename, cached result}
+   * @throws IOException
+   */
+  public String[] FindCacheResult(String key, Context context) throws IOException
+  {
+      FileSystem hdfs = FileSystem.get(context.getConfiguration());
+	  String cacheFilename = DirUtil.GetLast2ndSeg(key);
+	  cacheFilename = "/cache/" + cacheFilename;
+	  if(!hdfs.exists(new Path(cacheFilename)))
+		  return null;
+	  FSDataInputStream ins = hdfs.open(new Path(cacheFilename));
+	  if (ins == null) return null;
+	  String line = ins.readLine();
+	  while(line != null)
+	  {
+		  String[] record = line.split(";");
+		  if(record[0].equalsIgnoreCase(key))
+		  {
+			  String outvalue = record[1];
+			  String outkey = key.substring(0, key.lastIndexOf("/"));
+			  String[] retpair = {outkey, outvalue};
+			  return retpair;
+		  };
+		  line = ins.readLine();
+	  }
+	  return null;
   }
 }

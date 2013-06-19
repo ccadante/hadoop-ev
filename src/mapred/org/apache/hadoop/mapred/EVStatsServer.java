@@ -51,6 +51,9 @@ public class EVStatsServer implements Runnable {
 		@Override
 		public void run() {
 			try {
+				synchronized(this) {
+					job.dpInProc += 1;
+				}
 				BufferedReader ipt = new BufferedReader(new InputStreamReader(
 						socket.getInputStream()));
 				int state = Integer.valueOf(ipt.readLine());
@@ -106,6 +109,9 @@ public class EVStatsServer implements Runnable {
 				LOG.error(e.getMessage());
 			}
 			finally {
+				synchronized(this) {
+					job.dpInProc -= 1;
+				}
 				try {
 					socket.close();
 				}
@@ -126,10 +132,7 @@ public class EVStatsServer implements Runnable {
 		public void storeCache(EVStatistics evs) throws IOException
 		{
 			for (EVStatistics.CacheItem ci : evs.cacheList) {
-				int lastslash = ci.key.lastIndexOf("/");
-				String cikey = ci.key.substring(0, lastslash);
-				lastslash = cikey.lastIndexOf("/");
-				cikey = cikey.substring(lastslash+1);
+				String cikey = DirUtil.GetLast2ndSeg(ci.key);
 				String content = ci.key + ";" + ci.value + "\n";
 //				LOG.info("key value : " + content);
 				
@@ -201,8 +204,7 @@ public class EVStatsServer implements Runnable {
 			if (hdfs.isFile(fstats[i].getPath())) {
 				String fp = fstats[i].getPath().toString();
 				FSDataOutputStream os = hdfs.append(new Path(fp));
-				int lastslash = fp.lastIndexOf("/");
-				String key = fp.substring(lastslash + 1);
+				String key = DirUtil.GetLastSeg(fp);
 				cache_file_map.put(key, os);
 			}
 		}
@@ -214,12 +216,17 @@ public class EVStatsServer implements Runnable {
 			Socket skt = null;
 			try {
 				skt = serverSocket.accept();
-				if (skt != null)
-					new Thread(new DataProcess(this, skt)).start();
+				if (skt != null) {
+					Thread dpthd = new Thread(new DataProcess(this, skt));
+					dpthd.start();
+					dpthd.join();
+				}
 			}
 			catch (ClosedByInterruptException e) {
 				LOG.error(e.getMessage());
 			} catch (IOException e) {
+				LOG.error(e.getMessage());
+			} catch (InterruptedException e) {
 				LOG.error(e.getMessage());
 			}
 		}
@@ -230,7 +237,7 @@ public class EVStatsServer implements Runnable {
 			running = false;		
 		listThread = new Thread(this);
 		running = true;
-		listThread.start();		
+		listThread.start();	
 		LOG.info("Server started at port " + port);
 		return running;
 	}
