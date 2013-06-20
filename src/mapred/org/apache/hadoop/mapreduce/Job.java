@@ -624,6 +624,10 @@ public class Job extends JobContext {
 	  long timer = System.currentTimeMillis();
 	  
 	  LOG.info("File number = " + N);
+	  
+//	  CacheJob cachejob = new CacheJob(this, files);
+//	  cachejob.Start();
+	  
 	  // loop until deadline.
 	  while(System.currentTimeMillis() < deadline)
 	  {		
@@ -1073,7 +1077,7 @@ public class Job extends JobContext {
    * @param input
    * @return a map of (folder, sorted filename list)
    */
-  Map<String, FileStatusList> ReorganizeInput(List<FileStatus> input)
+  public Map<String, FileStatusList> ReorganizeInput(List<FileStatus> input)
   {
 	  Map<String, FileStatusList> retmap = new HashMap<String, FileStatusList>();
 	  for(FileStatus fs : input)

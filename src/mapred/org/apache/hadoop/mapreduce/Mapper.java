@@ -194,6 +194,7 @@ public class Mapper<KEYIN, VALUEIN, KEYOUT, VALUEOUT> {
     setup(context);
     while (context.nextKeyValue()) {
       /* cache begin*/
+      /*
       String[] cacheres = FindCacheResult(context.getCurrentKey().toString(), context);
       if(cacheres != null)
       {
@@ -201,15 +202,16 @@ public class Mapper<KEYIN, VALUEIN, KEYOUT, VALUEOUT> {
     	  context.write((KEYOUT)(new Text(cacheres[0])), 
     			  (VALUEOUT)(new IntWritable(Integer.parseInt(cacheres[1]))));
       }
+      */
       /* cache end*/
-      else
-      {
+//      else
+//      {
 	      long t1 = System.nanoTime();
 	      map(context.getCurrentKey(), context.getCurrentValue(), context);
 	      long t2 = System.nanoTime();
 	      context.addStat((t2 - t1)/1000); // in microsecond
 	      context.addCache();
-      }
+//      }
     }
     cleanup(context);
   }
