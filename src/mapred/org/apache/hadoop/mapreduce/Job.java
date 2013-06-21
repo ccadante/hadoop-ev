@@ -617,8 +617,7 @@ public class Job extends JobContext {
 	  InputFormat<?, ?> input = ReflectionUtils.newInstance(this.getInputFormatClass(), conf);
 
 	  List<FileStatus> files = ((FileInputFormat)input).getListStatus(this);
-	  Path filePaths[] = ((FileInputFormat)input).getInputPaths(this);
-	  
+	   
 	  long N = files.size(); // Total input records size.
 	  int runCount = 0;
 	  long timer = System.currentTimeMillis();
@@ -666,7 +665,7 @@ public class Job extends JobContext {
 		  if (distribution != null)
 			  sample_len = RandomSampleWithDistribution(files, distribution, nextSize, true, inputfiles);	
 		  else
-			  sample_len = RandomSampleWithDirs(files, filePaths, nextSize, inputfiles);
+			  sample_len = RandomSampleWithDirs(files, nextSize, inputfiles);
 		  Long splitsize = sample_len/max_slotnum;
 		  LOG.info("max slot number = " + max_slotnum + "; split size = " + splitsize);
 		  
@@ -862,20 +861,15 @@ public class Job extends JobContext {
   /**
    * Sample with input Dirs 
    * @param files
-   * @param filePaths
    * @param num
    * @param res_list
    * @return
    */
-  private Long RandomSampleWithDirs(List<FileStatus> files, Path filePaths[],
-		  int num, List<String> res_list) {
+  private Long RandomSampleWithDirs(List<FileStatus> files, int num, List<String> res_list) {
 	  Map<String, Stats> sizeProportion = new HashMap<String, Stats>();
-//	  for (Path p: filePaths) {
-//		  String loc = GetFolderFromFullPath(p.toString());
 	  for(int i=0; i<files.size(); i++)
 	  {
 		  String loc = DirUtil.GetLast2ndSeg(files.get(i).getPath().toString());
-//		  LOG.info("loc = " + files.get(i).getPath().toString());
 		  Stats newStats = evStats.new Stats();
 		  newStats.var = 1.0;
 		  sizeProportion.put(loc, newStats); // average among directories.
@@ -1026,7 +1020,11 @@ public class Job extends JobContext {
 			  final_sum += reduceResults.get(0).get(i);
 			  final_var += reduceResults.get(1).get(i);
 		  }
-		  double error = Math.sqrt(final_var) * 1.96; // 1.65 std err = 90%; 1.96 std err = 95%; 2.58 std err = 99%;
+		  // Normal distribution: 1.65 std err = 90%; 1.96 std err = 95%; 2.58 std err = 99%;
+		  double error = Math.sqrt(final_var) * 1.96; 
+		  // General distribution (Chebyshev's inequality): 
+		  // Pr(|X - E(X)| >= a) <= Var(X) / a^2
+		  //double error = Math.sqrt(final_var / 0.05); 
 		  return new double[]{final_sum, error};
 	  }
 	  return new double[] {0.0, 0.0};
