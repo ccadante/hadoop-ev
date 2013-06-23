@@ -209,8 +209,10 @@ public class Mapper<KEYIN, VALUEIN, KEYOUT, VALUEOUT> {
 	      long t1 = System.nanoTime();
 	      map(context.getCurrentKey(), context.getCurrentValue(), context);
 	      long t2 = System.nanoTime();
-	      context.addStat((t2 - t1)/1000); // in microsecond
-	      context.addCache();
+	      if (context.getConfiguration().getInt("mapred.evstatistic.enable", 0) == 1) {
+	        context.addStat((t2 - t1)/1000); // in microsecond
+	        context.addCache();
+	      }
 //      }
     }
     cleanup(context);

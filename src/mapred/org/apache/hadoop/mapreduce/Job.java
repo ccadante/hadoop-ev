@@ -623,6 +623,8 @@ public class Job extends JobContext {
 	  long timer = System.currentTimeMillis();
 	  
 	  LOG.info("File number = " + N);
+	  // enable EVStatistic	  
+	  this.getConfiguration().setInt("mapred.deadline.second", 1);
 	  
 //	  CacheJob cachejob = new CacheJob(this, files);
 //	  cachejob.Start();
