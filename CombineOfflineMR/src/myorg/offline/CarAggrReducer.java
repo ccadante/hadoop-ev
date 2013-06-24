@@ -30,6 +30,7 @@ public class CarAggrReducer extends Reducer<Text, IntWritable, Text, DoubleWrita
 		var = var / (double) count;
 		//result.set(sum);
 		result.set(avg);
+		System.out.println(result.toString());
 		context.write(key, result, var);
 	}
 }

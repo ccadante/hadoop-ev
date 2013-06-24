@@ -17,7 +17,7 @@ public class CombineOfflineMR{
 //		System.loadLibrary(Core.NATIVE_LIBRARY_NAME);
 		
 		Configuration conf = new Configuration();
-		conf.set("mapreduce.input.fileinputformat.split.maxsize", "16777216");
+//		conf.set("mapreduce.input.fileinputformat.split.maxsize", "16777216");
 		DistributedCache.createSymlink(conf);
 		DistributedCache.addCacheFile(new URI("hdfs://localhost:9000/libraries/libopencv_java244.so#libopencv_java244.so"), conf);
 		

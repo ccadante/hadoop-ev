@@ -144,6 +144,7 @@ public class Reducer<KEYIN,VALUEIN,KEYOUT,VALUEOUT> {
     	super.write(key, value);
     	final_vals.add(Double.parseDouble(value.toString()));
     	final_vars.add(var);
+    	Log.info("reduce value = " + value.toString());
 	}
     
     public ArrayList<ArrayList<Double>> getValueVar() {
@@ -195,6 +196,7 @@ public class Reducer<KEYIN,VALUEIN,KEYOUT,VALUEOUT> {
   public void run(Context context) throws IOException, InterruptedException {
     setup(context);
     while (context.nextKey()) {
+      Log.info("reducer running: " + context.getCurrentKey().toString());
       reduce(context.getCurrentKey(), context.getValues(), context);
     }
     cleanup(context);

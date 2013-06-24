@@ -770,12 +770,13 @@ class MapTask extends Task {
 
       input.initialize(split, mapperContext);
       mapper.run(mapperContext);
-      if (mapperContext.getConfiguration().getInt("mapred.evstatistic.enable", 0) == 1) {
-    	myEVStat = mapperContext.getEVStats();
-      	sendEVStatsToJob();
-      }
-      LOG.warn("Get EVStatistics with size of " + myEVStat.getSize() + 
+      if (mapperContext.getConfiguration().getInt("mapred.evstatistic.enable", 1) == 1)
+      {
+    	  myEVStat = mapperContext.getEVStats();
+    	  sendEVStatsToJob();
+    	  LOG.warn("Get EVStatistics with size of " + myEVStat.getSize() + 
     		  " and one value as " + myEVStat.getFirstStat());
+      }
       input.close();
       output.close(mapperContext);
     } catch (NoSuchMethodException e) {

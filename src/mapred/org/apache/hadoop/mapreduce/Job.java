@@ -623,11 +623,9 @@ public class Job extends JobContext {
 	  long timer = System.currentTimeMillis();
 	  
 	  LOG.info("File number = " + N);
-	  // enable EVStatistic	  
-	  this.getConfiguration().setInt("mapred.deadline.second", 1);
 	  
-//	  CacheJob cachejob = new CacheJob(this, files);
-//	  cachejob.Start();
+	  CacheJob cachejob = new CacheJob(this, files);
+	  cachejob.Start();
 	  
 	  // loop until deadline.
 	  while(System.currentTimeMillis() < deadline)
@@ -695,6 +693,7 @@ public class Job extends JobContext {
 	  
 	  while (dpInProc > 0) {}
 	  return true;
+	  
   }
   
   /**
