@@ -19,7 +19,9 @@ import org.apache.hadoop.hdfs.DistributedFileSystem;
 import org.apache.hadoop.io.IntWritable;
 import org.apache.hadoop.io.LongWritable;
 import org.apache.hadoop.io.Text;
+import org.apache.hadoop.mapred.DirUtil;
 import org.apache.hadoop.mapred.JobConf;
+import org.apache.hadoop.mapreduce.lib.input.TextInputFormat;
 import org.apache.hadoop.mapreduce.Mapper.Context;
 import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
@@ -48,11 +50,6 @@ public class CacheJob {
 			return;
 		}
 		
-		/* Calculate the files size in Byte */
-		long cache_len = hdfs.getContentSummary(new Path(cache_prefix)).getLength();
-		Long splitsize = cache_len/max_slotnum;
-		Log.info("Cache Length = " + cache_len + "; Slot Num = " + max_slotnum + "; Split Size = " + splitsize);
-		
 		/* create an input list file in /cache */
 		
 		if(!hdfs.exists(new Path(cache_prefix)))
@@ -65,10 +62,16 @@ public class CacheJob {
 						cache_prefix + "/inputfilelist"));
 		for (FileStatus fs : fslist)
 		{
-			String line = fs.getPath().toString() + "\n";
+			int prelen = jobconf.get("fs.default.name").length();
+			String line = fs.getPath().toString().substring(prelen) + "\n";
 			os.write(line.getBytes("UTF-8"));
 		}
 		os.close();
+		
+		/* Calculate the files size in Byte */
+		long input_len = hdfs.getContentSummary(new Path(cache_prefix + "/inputfilelist")).getLength();
+		Long splitsize = input_len/max_slotnum;
+		Log.info("Inputfilelist Length = " + input_len + "; Slot Num = " + max_slotnum + "; Split Size = " + splitsize);
 		
 		/* create the cache job */
 		JobConf cacheconf = new JobConf();
@@ -79,11 +82,12 @@ public class CacheJob {
 		Log.info("JAR NAME: " + jobconf.getJar());
 		cachejob.setMapperClass(CacheJobMapper.class);
 		cachejob.setReducerClass(job.getReducerClass());
+		cachejob.setInputFormatClass(TextInputFormat.class);
 		cachejob.setOutputKeyClass(job.getOutputKeyClass());
 		cachejob.setOutputValueClass(job.getOutputValueClass());
 		cachejob.getConfiguration().set("mapreduce.input.fileinputformat.split.maxsize", splitsize.toString());
 		
-	    FileInputFormat.setInputPaths(cachejob, new Path("/cache"));	    
+	    FileInputFormat.setInputPaths(cachejob, new Path("/cache/inputfilelist"));	    
 	    String outputpath = FileOutputFormat.getOutputPath(job).toString();
 	    outputpath = outputpath + "_cache";
 	    FileOutputFormat.setOutputPath(cachejob, new Path(outputpath));
@@ -106,46 +110,58 @@ public class CacheJob {
 	
 	public static class CacheJobMapper extends Mapper<LongWritable, Text, Text, IntWritable>{
 
-		public Hashtable<String, Integer> inputhash = new Hashtable<String, Integer>();
+		public Hashtable<String, Integer> cachehash = new Hashtable<String, Integer>();
 		
 		public void setup(Context context) throws IOException
 		{
 			Configuration jobconf = context.getConfiguration();
 			FileSystem hdfs = FileSystem.get(jobconf);
-			String inputfilelist = "/cache/inputfilelist";
-			FSDataInputStream ins = hdfs.open(new Path(inputfilelist));
-			BufferedReader reader = new BufferedReader(new InputStreamReader(ins));
-			System.out.println("input file list: " + inputfilelist);
-			if (ins == null) 
+			String cache_prefix = "/cache";
+			FileStatus cachefiles[] = hdfs.listStatus(new Path(cache_prefix));
+			Log.info("Cache files number = " + cachefiles.length);
+			for(int i = 0; i< cachefiles.length; i++)
 			{
-				System.out.println("Cannot open input file list");
-				return;
+				Path cachefile = cachefiles[i].getPath();
+				// ignore inputfilelist
+				if (DirUtil.GetLastSeg(cachefile.toString()).equals("inputfilelist"))
+					continue;
+				FSDataInputStream ins = hdfs.open(cachefile);
+				BufferedReader reader = new BufferedReader(new InputStreamReader(ins));
+				System.out.println("input file list: " + cachefile);
+				if (ins == null) 
+				{
+					System.out.println("Cannot open input file list");
+					return;
+				}
+				String line = reader.readLine();
+				while(line != null)
+				{
+					String[] kvpair = line.split(";");
+					cachehash.put(kvpair[0], Integer.parseInt(kvpair[1]));
+					System.out.println("			" + line);
+					line = reader.readLine();
+				}
+				reader.close();
+				ins.close();
 			}
-			String line = reader.readLine();
-			while(line != null)
-			{
-				inputhash.put(line, 1);
-				System.out.println("			" + line);
-				line = reader.readLine();
-			}
-			reader.close();
-			ins.close();
 		}
 		
 		public void map(LongWritable key, Text value, Context context) throws IOException, InterruptedException
 		{
 			Configuration jobconf = context.getConfiguration();
 			String valueline = value.toString();
-			String[] kvpair = valueline.split(";");
-			System.out.println("cached input file = " + kvpair[0] + "; hashsize = " + inputhash.size());
-			if (inputhash.get(jobconf.get("fs.default.name") + kvpair[0]) != null)
+			System.out.println("input file = " + valueline + "; hashsize = " + cachehash.size());
+			Integer cacheresult = cachehash.get(valueline);
+			if (cacheresult != null)
 			{
-				System.out.println("CACHE HIT!!!   " + kvpair[0]);
-				String keyout = kvpair[0].substring(0, kvpair[0].lastIndexOf("/"));
-				context.write(new Text(keyout), new IntWritable(Integer.parseInt(kvpair[1])));
+				System.out.println("CACHE HIT!!!   " + valueline);
+				String keyout = valueline.substring(0, valueline.lastIndexOf("/"));
+				context.write(new Text(keyout), new IntWritable(cacheresult));
 				System.out.println("CACHE HIT!!! key = " + key);
 			}
 		}
 	}
+	
+	
 
 }
