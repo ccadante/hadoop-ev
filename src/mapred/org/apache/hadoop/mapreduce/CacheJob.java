@@ -77,6 +77,7 @@ public class CacheJob {
 		JobConf cacheconf = new JobConf();
 		cacheconf.setJar(jobconf.getJar());
 		cacheconf.setInt("mapred.evstatistic.enable", 0);
+		cacheconf.setInt("mapred.evstats.serverport", jobconf.getInt("mapred.evstats.serverport", 0));
 		
 		cachejob = new Job(cacheconf, job.getJobName() + "cache job");
 		Log.info("JAR NAME: " + jobconf.getJar());
