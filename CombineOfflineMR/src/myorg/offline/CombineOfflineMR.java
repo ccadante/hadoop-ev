@@ -8,6 +8,7 @@ import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.*;
 import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
+import org.apache.hadoop.mapreduce.lib.input.SequenceFileInputFilter;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 import org.apache.hadoop.util.GenericOptionsParser;
 
@@ -32,9 +33,10 @@ public class CombineOfflineMR{
 		job.setJarByClass(CombineOfflineMR.class);
 		job.setMapperClass(ImageCarCountMapper.class);
 		job.setReducerClass(CarAggrReducer.class);
-		job.setInputFormatClass(CombineImageInputFormat.class);
 		job.setOutputKeyClass(Text.class);
 		job.setOutputValueClass(IntWritable.class);
+		job.setInputFormatClass(SequenceFileInputFilter.class);
+		SequenceFileInputFilter.setFilterClass(job, SequenceFileInputFilter.ListFilter.class);
 		
 		String[] inputs = otherArgs[0].split(",");
 		FileOutputFormat.setOutputPath(job, new Path(otherArgs[1]));

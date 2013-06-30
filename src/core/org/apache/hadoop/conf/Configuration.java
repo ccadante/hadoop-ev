@@ -1452,4 +1452,27 @@ public class Configuration implements Iterable<Map.Entry<String,String>>,
     }
     return result;
   }
+  
+  /**
+   * list filter
+   */
+  private List<String> listfilter;
+  
+  /**
+   * set list filter
+   * @param l
+   */
+  public void setListFilter(List<String> l)
+  {
+	  listfilter = l;
+  }
+	  
+  /**
+   * get list filter
+   * @return
+   */
+  public List<String> getListFilter()
+  {
+	  return listfilter;
+  }
 }

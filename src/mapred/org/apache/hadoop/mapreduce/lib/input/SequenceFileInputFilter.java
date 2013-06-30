@@ -23,6 +23,7 @@ import java.nio.ByteBuffer;
 import java.security.DigestException;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.util.List;
 import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
 
@@ -56,6 +57,8 @@ public class SequenceFileInputFilter<K, V>
     "mapreduce.input.sequencefileinputfilter.frequency";
   final public static String FILTER_REGEX = 
     "mapreduce.input.sequencefileinputfilter.regex";
+  final public static String FILTER_LIST = 
+	"mapreduce.input.sequencefileinputfilter.list";
     
   public SequenceFileInputFilter() {
   }
@@ -284,7 +287,62 @@ public class SequenceFileInputFilter<K, V>
       return hashcode;
     }
   }
+
+  /** Records filter by matching key to regex
+   */
+  public static class ListFilter extends FilterBase {
+    private String[] lstfilter;
+    /** Define the filtering regex and stores it in conf
+     * @param conf where the regex is set
+     * @param regex regex used as a filter
+     */
+    public static void setListFilter(Configuration conf, List<String> ls)
+    {
+    	String strls = new String();
+    	for (String it : ls)
+    	{
+    		strls = strls + it + ";";
+    	}
+        conf.set(FILTER_LIST, strls);
+    }
+        
+    public ListFilter() { }
+        
+    /** configure the Filter by checking the configuration
+     */
+    public void setConf(Configuration conf) 
+    {
+    	String strls = conf.get(FILTER_LIST, "");
+    	this.lstfilter = getListFilter(strls);
+    	org.mortbay.log.Log.info("lstfilter.length = " + lstfilter.length);
+    	this.conf = conf;
+    }
     
+    public String[] getListFilter(String strls)
+    {
+    	return strls.split(";");
+    }
+
+
+    /** Filtering method
+     * If key matches the regex, return true; otherwise return false
+     * @see Filter#accept(Object)
+     */
+    public boolean accept(Object key) 
+    {
+		org.mortbay.log.Log.info("key = " + key.toString());
+    	for (String filter : lstfilter)
+    	{
+    		if (key.toString().equals(filter))
+    		{
+    			org.mortbay.log.Log.info("list filter = " + lstfilter[0] + ";" + lstfilter.length);
+    			return true;
+    		}
+    	}
+    	return false;
+    }
+  }
+
   private static class FilterRecordReader<K, V>
       extends SequenceFileRecordReader<K, V> {
     

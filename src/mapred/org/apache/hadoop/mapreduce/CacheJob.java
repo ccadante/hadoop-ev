@@ -5,6 +5,7 @@ import java.io.BufferedReader;
 import java.io.DataInputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Hashtable;
 import java.util.List;
@@ -30,9 +31,51 @@ import org.mortbay.log.Log;
 public class CacheJob {
 	
 	public Job cachejob;
+	private int seqmode;
 	
-	@SuppressWarnings("deprecation")
+	/**
+	 * Constructor for TextInputFormat
+	 * @param job
+	 * @param fslist
+	 * @throws IOException
+	 * @throws IllegalStateException
+	 * @throws ClassNotFoundException
+	 */
 	public CacheJob(Job job, List<FileStatus> fslist) throws IOException, IllegalStateException, ClassNotFoundException
+	{
+		seqmode = 0;
+		List<String> cachekeylist = new ArrayList<String>();
+		for (FileStatus fs : fslist)
+		{
+			cachekeylist.add(fs.getPath().toString());
+		}
+		SetupCacheJob(job, cachekeylist);
+	}
+	
+	/**
+	 * Constructor for SequenceFileInputFormat
+	 * @param job
+	 * @param key_rec_list_map
+	 * @throws ClassNotFoundException 
+	 * @throws IOException 
+	 * @throws IllegalStateException 
+	 */
+	public CacheJob(Job job, HashMap<String, List<SequenceFileRecord>> key_rec_list_map) throws IllegalStateException, IOException, ClassNotFoundException
+	{
+		seqmode = 1;
+		List<String> cachekeylist = new ArrayList<String>();
+		for(List<SequenceFileRecord> lsfr : key_rec_list_map.values())
+		{
+			for(SequenceFileRecord sfr : lsfr)
+			{
+				cachekeylist.add(sfr.getCacheKey());
+			}
+		}
+		SetupCacheJob(job, cachekeylist);
+	}
+	
+	
+	public void SetupCacheJob(Job job, List<String> fslist) throws IOException, IllegalStateException, ClassNotFoundException
 	{
 		JobConf jobconf = (JobConf)(job.getConfiguration());
 
@@ -60,10 +103,12 @@ public class CacheJob {
 		
 		FSDataOutputStream os = hdfs.create(new Path(
 						cache_prefix + "/inputfilelist"));
-		for (FileStatus fs : fslist)
+		
+		int prelen = jobconf.get("fs.default.name").length();
+		Log.info("seqmode = " + seqmode); 
+		for (String fs : fslist)
 		{
-			int prelen = jobconf.get("fs.default.name").length();
-			String line = fs.getPath().toString().substring(prelen) + "\n";
+			String line = ((seqmode == 0 ) ? fs.substring(prelen) : fs) + "\n";
 			os.write(line.getBytes("UTF-8"));
 		}
 		os.close();
@@ -149,7 +194,6 @@ public class CacheJob {
 		
 		public void map(LongWritable key, Text value, Context context) throws IOException, InterruptedException
 		{
-			Configuration jobconf = context.getConfiguration();
 			String valueline = value.toString();
 			System.out.println("input file = " + valueline + "; hashsize = " + cachehash.size());
 			Integer cacheresult = cachehash.get(valueline);

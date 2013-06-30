@@ -644,7 +644,7 @@ class ReduceTask extends Task {
          job, reporter, taskContext);
     job.setBoolean("mapred.skip.on", isSkipping());
     org.apache.hadoop.mapreduce.Reducer.Context 
-         reducerContext = createReduceContext(reducer, job, getTaskID(),
+    	reducerContext = createReduceContext(reducer, job, getTaskID(),
                                                rIter, reduceInputKeyCounter,
                                                reduceInputValueCounter, 
                                                trackedRW, committer,
@@ -652,8 +652,8 @@ class ReduceTask extends Task {
                                                valueClass);
     reducer.run(reducerContext);
     ArrayList<ArrayList<Double>> results = reducerContext.getValueVar();
-    LOG.info("runNewReducer: results=" + results.size());
     if (results != null) {
+    	LOG.info("runNewReducer: results=" + results.size());
     	sendReduceResultToJob(results);
     }
     trackedRW.close(reducerContext);

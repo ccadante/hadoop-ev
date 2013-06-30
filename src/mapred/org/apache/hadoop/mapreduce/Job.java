@@ -37,6 +37,7 @@ import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hdfs.DistributedFileSystem;
+import org.apache.hadoop.io.ByteWritable;
 import org.apache.hadoop.io.IntWritable;
 import org.apache.hadoop.io.RawComparator;
 import org.apache.hadoop.io.Text;
@@ -44,6 +45,7 @@ import org.apache.hadoop.mapreduce.EVStatistics.Stats;
 import org.apache.hadoop.mapreduce.EVStatistics.StatsType;
 import org.apache.hadoop.mapreduce.TaskAttemptID;
 import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
+import org.apache.hadoop.mapreduce.lib.input.SequenceFileInputFilter;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 import org.apache.hadoop.mapred.DirUtil;
 import org.apache.hadoop.mapred.EVStatsServer;
@@ -587,9 +589,20 @@ public class Job extends JobContext {
    * @throws InterruptedException 
    * @throws IOException 
    * @throws CloneNotSupportedException 
+ * @throws IllegalAccessException 
+ * @throws InstantiationException 
    */
-  public boolean waitForSampleCompletion() throws IOException, InterruptedException, ClassNotFoundException, CloneNotSupportedException
+  public boolean waitForSampleCompletion() throws IOException, InterruptedException, ClassNotFoundException, CloneNotSupportedException, InstantiationException, IllegalAccessException
   {
+	  LOG.info("@@@@@ input format class @@@@@: " + this.getInputFormatClass());
+	  /* If the input class is SequenceFileInputFilter */
+	  if (this.getInputFormatClass().equals(SequenceFileInputFilter.class))
+	  {
+		  LOG.info("@@@@@ sequence file branch @@@@@");
+		  SequenceFileSampleProc sfsp = new SequenceFileSampleProc();
+		  return sfsp.setup(this) && sfsp.start();
+	  }
+	  
 	  String dirs = this.getConfiguration().get("mapred.input.dir", "");
 	  String [] list = StringUtils.split(dirs);
 	  
@@ -613,9 +626,10 @@ public class Job extends JobContext {
 	  long deadline = System.currentTimeMillis() + timeConstraint * 1000; // in millisecond
 	  LOG.info("Deadline: " + deadline + " (" + timeConstraint + "s)");
 	  
+	  
 	  Configuration conf = this.getConfiguration();
 	  InputFormat<?, ?> input = ReflectionUtils.newInstance(this.getInputFormatClass(), conf);
-
+	  
 	  List<FileStatus> files = ((FileInputFormat)input).getListStatus(this);
 	   
 	  long N = files.size(); // Total input records size.
