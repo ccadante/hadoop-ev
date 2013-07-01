@@ -932,7 +932,7 @@ public class Job extends JobContext {
    * Currently, we aggregate data for each folder (i.e, camera location).
    * @return Map<String, Double>, e.g., <"16m_1", 0.90>, <"16m_1", 0.099>
    */
-  private Map<String, Stats> processEVStats(){
+  public Map<String, Stats> processEVStats(){
 	  
 	  long actualSize = 0;
 	  Map<String, Stats> tmp_stat = new HashMap<String, Stats>();
@@ -1027,7 +1027,7 @@ public class Job extends JobContext {
   
   public enum OpType {AVG, COUNT, SUM}
   
-  private double[] processReduceResults(long n, long N, OpType op) {
+  public double[] processReduceResults(long n, long N, OpType op) {
 	  if (op == OpType.AVG && reduceResults.size() > 1) {
 		  double final_sum = 0;
 		  double final_var = 0;

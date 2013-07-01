@@ -330,12 +330,10 @@ public class SequenceFileInputFilter<K, V>
      */
     public boolean accept(Object key) 
     {
-		org.mortbay.log.Log.info("key = " + key.toString());
     	for (String filter : lstfilter)
     	{
     		if (key.toString().equals(filter))
     		{
-    			org.mortbay.log.Log.info("list filter = " + lstfilter[0] + ";" + lstfilter.length);
     			return true;
     		}
     	}

@@ -21,7 +21,8 @@ public class SequenceFileRecord
 		filename = file;
 		size = sz;
 	}
-	
+
+	// ***.seq/***.jpg
 	public String getCacheKey()
 	{
 		return filename;
@@ -31,14 +32,21 @@ public class SequenceFileRecord
 	{
 		return size;
 	}
-	
+	// ***.seq/***.jpg
 	public String getFileName()
 	{
 		return filename;
 	}
 	
+	// hdfs://localhost:9000/...../***.seq
 	public String getSeqName()
 	{
 		return seqname;
+	}
+	
+	// ***.seq
+	public String getReduceKey()
+	{
+		return filename.substring(0, filename.lastIndexOf("/"));
 	}
 }

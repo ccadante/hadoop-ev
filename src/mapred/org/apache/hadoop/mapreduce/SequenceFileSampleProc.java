@@ -50,11 +50,8 @@ public class SequenceFileSampleProc {
 	private int initSampleSize;
 	private DistributedFileSystem hdfs;
 	private int max_slotnum;
+	private long all_input_len = 0;
 	
-	// The size of evStatsSet should equal number of Map tasks.
-	Set<EVStatistics> evStatsSet = new HashSet<EVStatistics>();
-	EVStatistics evStats = new EVStatistics();
-	ArrayList<ArrayList<Double>> reduceResults = new ArrayList<ArrayList<Double>>(); 
 	Random rand = new Random(); // It is better to share a global Random class.
 	
 	public boolean setup(Job job) throws ClassNotFoundException, IOException, InstantiationException, IllegalAccessException
@@ -108,9 +105,9 @@ public class SequenceFileSampleProc {
 			} 
 			else 
 			{
-				distribution = processEVStats();
-				long avgTime = Long.valueOf(evStats.getAggreStat("time_per_record")); // in millisecond
-				int totalSize = Integer.valueOf(evStats.getAggreStat("total_size")); 			  
+				distribution = originjob.processEVStats();
+				long avgTime = Long.valueOf(originjob.evStats.getAggreStat("time_per_record")); // in millisecond
+				int totalSize = Integer.valueOf(originjob.evStats.getAggreStat("total_size")); 			  
 				// NOTE: when computing extraCost and nextSize, we need to consider the number of parallel
 				// Map slots.
 				if (avgTime > 0) {
@@ -135,12 +132,14 @@ public class SequenceFileSampleProc {
 				sample_len = RandomSampleWithDistribution(files, distribution, nextSize, true, inputfiles);	
 			else
 				sample_len = RandomSampleWithDirs(files, nextSize, inputfiles);
-			Long splitsize = sample_len/max_slotnum;
+			Long splitsize = all_input_len/max_slotnum;
 			Log.info("max slot number = " + max_slotnum + "; split size = " + splitsize);
-			  
+			
 			Job newjob = new Job(originjob.getConfiguration(), "sample_" + runCount);
 			Log.info(newjob.getJar());
-			newjob.getConfiguration().set("mapreduce.input.fileinputformat.split.maxsize", splitsize.toString());
+			newjob.getConfiguration().set("mapred.min.split.size", splitsize.toString());
+			Log.info("minsize = " + FileInputFormat.getMinSplitSize(newjob));
+			Log.info("maxsize = " + FileInputFormat.getMaxSplitSize(newjob));
 			FileOutputFormat.setOutputPath(newjob, 
 					new Path(originjob.getConfiguration().get(("mapred.output.dir")) + "_" + runCount));
 			
@@ -160,7 +159,7 @@ public class SequenceFileSampleProc {
 			*/
 			newjob.waitForCompletion(true);
 			  
-			double[] results = processReduceResults(inputfiles.size(), N, OpType.AVG);
+			double[] results = originjob.processReduceResults(inputfiles.size(), N, OpType.AVG);
 			Log.info("RESULT ESTIMATION: sum(avg(Loc)) = " + results[0] + "+-" + results[1] + 
 					  " (95% confidence).\n");
 		}
@@ -270,7 +269,7 @@ public class SequenceFileSampleProc {
 		double total_var = 0;
 		for (String key : distribution.keySet()) {
 			sampledSize.put(key, 0.0);
-			total_var += distribution.get(key).var;		  
+			total_var += distribution.get(key).var;	
 		}
 	    for (String key : distribution.keySet()) {
 			sizeProportion.put(key, num * distribution.get(key).var / total_var);
@@ -285,7 +284,7 @@ public class SequenceFileSampleProc {
 		{
 			int idx = rand.nextInt(files.size());
 			SequenceFileRecord fileRec = files.get(idx);
-			String folder = fileRec.getSeqName();
+			String folder = fileRec.getReduceKey();
 			boolean isChosen = false;
 			if (useMHSampling) { // MH sampling algorithm
 				String cur_variable = folder;
@@ -359,8 +358,8 @@ public class SequenceFileSampleProc {
 		Map<String, Stats> sizeProportion = new HashMap<String, Stats>();
 		for(int i=0; i<files.size(); i++)
 		{
-			String loc =files.get(i).getSeqName();
-			Stats newStats = evStats.new Stats();
+			String loc =files.get(i).getReduceKey();
+			Stats newStats = originjob.evStats.new Stats();
 			newStats.var = 1.0;
 			sizeProportion.put(loc, newStats); // average among directories.
 		}
@@ -382,6 +381,7 @@ public class SequenceFileSampleProc {
 		List<FileStatus> seqfiles = ((FileInputFormat<?, ?>)input).getListStatus(originjob);
 		for (FileStatus seqfs : seqfiles)
 		{
+			all_input_len += seqfs.getLen();
 			Path seqpath = seqfs.getPath();
 			SequenceFile.Reader reader = new SequenceFile.Reader(FileSystem.get(conf), seqpath, conf);
 			if (reader.isCompressed()) 
@@ -409,21 +409,6 @@ public class SequenceFileSampleProc {
 	
 	
 	
-	
-	/**
-	 * Add one piece of EVStats into the global set.
-	 * @param evStat
-	 */
-	public void addEVStats(EVStatistics evStat){
-		if (evStat == null || evStat.getSize() == 0) {
-			Log.warn("Got a null/empty stat.");
-			return;
-		}
-		synchronized (this){
-			evStatsSet.add(evStat);
-			//LOG.warn("addEVStats set size = " + evStatsSet.size());
-		}
-	}
 	  
 	
 	// Get the folder name from a full path name, which is the deepest directory name.
@@ -440,122 +425,4 @@ public class SequenceFileSampleProc {
 	}
 	  
 	
-	/**
-	 * Process current set of EVStats to get the time-cost distribution across different domain. 
-	 * Currently, we aggregate data for each folder (i.e, camera location).
-	 * @return Map<String, Double>, e.g., <"16m_1", 0.90>, <"16m_1", 0.099>
-	 */
-	private Map<String, Stats> processEVStats(){
-		  
-		long actualSize = 0;
-		Map<String, Stats> tmp_stat = new HashMap<String, Stats>();
-		Map<String, Stats> final_stat = new HashMap<String, Stats>();
-		  
-		// Compute average.
-	    for (EVStatistics evstat : evStatsSet) {
-	    	actualSize += evstat.getSize();
-	    	for (StatsType type : evstat.timeProfile.keySet()) {
-	    		String loc = GetFolderFromFullPath(type.value);
-	    		if (!tmp_stat.containsKey(loc)) {
-	    			tmp_stat.put(loc, evStats.new Stats());
-	    		}
-	    		tmp_stat.get(loc).addValue(evstat.timeProfile.get(type) / 1000); // us to ms
-	    	}
-	    }
-	    for (String key : tmp_stat.keySet()) {
-	    	tmp_stat.get(key).computeAvg();
-	    }        
-	    // Compute variance.
-	    for (EVStatistics evstat : evStatsSet) {
-	    	for (StatsType type : evstat.timeProfile.keySet()) {
-	    		String loc = GetFolderFromFullPath(type.value);
-	    		tmp_stat.get(loc).addDiff(evstat.timeProfile.get(type) / 1000); // us to ms
-	    	}
-	    }
-	    for (String key : tmp_stat.keySet()) {
-	    	tmp_stat.get(key).computeVar();
-	    }
-	      
-	    // NOTE: we want to remove outlier data!
-	    // Compute average.
-	    long avgTime = 0;
-		long totalSize = 0;
-	    for (EVStatistics evstat : evStatsSet) {
-	    	for (StatsType type : evstat.timeProfile.keySet()) {
-	    		String loc = GetFolderFromFullPath(type.value);
-	    		if (!final_stat.containsKey(loc)) {
-	    			final_stat.put(loc, evStats.new Stats());
-	    		}
-	    		// Diff(val - avg) < 2 * std 
-	    		long val = evstat.timeProfile.get(type) / 1000; // us to ms
-	    		if (Math.abs(val - tmp_stat.get(loc).avg) < 2 * Math.sqrt(tmp_stat.get(loc).var)) {
-	    			final_stat.get(loc).addValue(val);
-	    			avgTime += val;
-	    			totalSize++;
-	    		}
-	    	}
-	    }
-	    for (String key : final_stat.keySet()) {
-	    	final_stat.get(key).computeAvg();
-	    }        
-	    // Compute variance.
-	    for (EVStatistics evstat : evStatsSet) {
-	    	for (StatsType type : evstat.timeProfile.keySet()) {
-	    		String loc = GetFolderFromFullPath(type.value);
-	    		long val = evstat.timeProfile.get(type) / 1000; // us to ms
-	    		if (Math.abs(val - tmp_stat.get(loc).avg) < 2 * Math.sqrt(tmp_stat.get(loc).var))
-	    			final_stat.get(loc).addDiff(val);
-	    	}
-	    }
-	    for (String key : final_stat.keySet()) {
-	    	final_stat.get(key).computeVar();
-	    	Log.info(key + "\tavg = " + final_stat.get(key).avg + "  var = " + final_stat.get(key).var + " count = " +
-	    			  final_stat.get(key).count);
-	    }
-	      
-	    // Set average values.
-	    if(totalSize > 0) {
-	    	evStats.addAggreStat("time_per_record", String.valueOf(avgTime / totalSize));
-	    	// We need actualSize rather than the size after removing outlier.
-	    	evStats.addAggreStat("total_size", String.valueOf(actualSize));
-	    } else {
-	    	evStats.addAggreStat("time_per_record", String.valueOf(0));
-	    	evStats.addAggreStat("total_size", String.valueOf(0));
-	    }
-	    // Clear the processed evStats.
-	    evStatsSet.clear();
-	      
-	    return final_stat;
-	}
-	  
-	/**
-	 * Adds the results of Reducer like value and variance into local stats.
-	 * @param final_val
-	 * @param final_var
-	 */
-	public void addReduceResults(ArrayList<Double> final_val, ArrayList<Double> final_var) {
-		reduceResults.add(final_val);
-		reduceResults.add(final_var);
-	}
-	  
-	public enum OpType {AVG, COUNT, SUM}
-	  
-	private double[] processReduceResults(long n, long N, OpType op) {
-		if (op == OpType.AVG && reduceResults.size() > 1) {
-			double final_sum = 0;
-			double final_var = 0;
-			for (int i=0; i<reduceResults.get(0).size(); i++) {
-				final_sum += reduceResults.get(0).get(i);
-				final_var += reduceResults.get(1).get(i);
-			}
-			// Normal distribution: 1.65 std err = 90%; 1.96 std err = 95%; 2.58 std err = 99%;
-			double error = Math.sqrt(final_var) * 1.96; 
-			// General distribution (Chebyshev's inequality): 
-			// Pr(|X - E(X)| >= a) <= Var(X) / a^2
-			//double error = Math.sqrt(final_var / 0.05); 
-			return new double[]{final_sum, error};
-		}
-		return new double[] {0.0, 0.0};
-	}
-	  
 }
