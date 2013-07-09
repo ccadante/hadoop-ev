@@ -48,6 +48,8 @@ public class SequenceFileSampleProc {
 	private int timeConstraint;
 	private int initSampleRound;
 	private int initSampleSize;
+	private int sampleSizePerFolder;
+	private float sample2ndRoundPctg;
 	private DistributedFileSystem hdfs;
 	private int max_slotnum;
 	private long all_input_len = 0;
@@ -61,10 +63,21 @@ public class SequenceFileSampleProc {
 		
 		// Get time constraint.
 		timeConstraint = job.getConfiguration().getInt("mapred.deadline.second", 150);
-		// Get trial/initial sample rounds number.
+		// NOTE that we are using 3-rounds sampling as our bottomline workflow: 1st round to get time cost of 
+		// one map; 2nd round to get the variance of variables; 3rd round to consume all the rest time.
+		// In experiments, we may skip 1st round sometimes assuming we have prior knowledge of time cost of 
+		// one map somehow (just for some test cases to get better time results)
+		// 
+		// Get trial/initial sample rounds number. Please set this to 1 at current stage (07/08/2013).
 		initSampleRound = job.getConfiguration().getInt("mapred.sample.initround", 1);
 	    // Get trial/initial rounds sample unit size.
 		initSampleSize = job.getConfiguration().getInt("mapred.sample.initsize", 60);
+		// Get sample size per folder for the 1st round.
+		sampleSizePerFolder = job.getConfiguration().getInt("mapred.sample.sizePerFolder", 10);
+		// Get sample time percentage for the 2nd round.
+		sample2ndRoundPctg = job.getConfiguration().getFloat("mapred.sample.sampleTimePctg",
+				                                                      (float) 0.3);
+		  
 		// Get number of Map slots in the cluster.
 		hdfs = (DistributedFileSystem)(FileSystem.get(job.getConfiguration()));
 		
@@ -90,9 +103,12 @@ public class SequenceFileSampleProc {
 //		cachejob.Start();
 		
 		/* loop until deadline */
+		List<SequenceFileRecord> files = GetWholeFileRecordList();
+		long N = files.size(); // Total input records size.		
 		while(System.currentTimeMillis() < deadline)
 		{		
 			runCount++;
+			Log.info("*** Sampling Round - " + runCount + " ***");
 			long totalTimeCost = System.currentTimeMillis() - timer;
 			timer = System.currentTimeMillis();
 			long extraCost = 0;
@@ -100,38 +116,73 @@ public class SequenceFileSampleProc {
 			  
 			Map<String, Stats> distribution = null;
 			int nextSize = 1;
-			if (runCount <= initSampleRound) {
-				nextSize = runCount * initSampleSize;
-			} 
-			else 
-			{
-				distribution = originjob.processEVStats();
-				long avgTime = Long.valueOf(originjob.evStats.getAggreStat("time_per_record")); // in millisecond
-				int totalSize = Integer.valueOf(originjob.evStats.getAggreStat("total_size")); 			  
-				// NOTE: when computing extraCost and nextSize, we need to consider the number of parallel
-				// Map slots.
-				if (avgTime > 0) {
-					extraCost = totalTimeCost - avgTime * totalSize / max_slotnum; // in millisecond
-					nextSize = (int) ((deadline - System.currentTimeMillis() - extraCost)
+			// get the files total size in a sample and determine the proper split size
+			List<SequenceFileRecord> inputfiles = new ArrayList<SequenceFileRecord>();
+			Long sample_len = 0L;
+			if (runCount == 1) {
+				//nextSize = runCount * initSampleSize; 
+				sample_len = RandomSampleWithDirs(files, sampleSizePerFolder, inputfiles);
+			} else if (runCount == 2) {
+				  distribution = originjob.processEVStats();
+				  long avgTime = Long.valueOf(originjob.evStats.getAggreStat("time_per_record")); // in millisecond
+				  int totalSize = Integer.valueOf(originjob.evStats.getAggreStat("total_size")); 			  
+				  // NOTE: when computing extraCost and nextSize, we need to consider the number of parallel
+				  // Map slots.
+				  if (avgTime > 0) {
+					  extraCost = totalTimeCost - avgTime * totalSize / max_slotnum; // in millisecond
+					  nextSize = (int) ((deadline - System.currentTimeMillis() - extraCost)
 							  / avgTime * max_slotnum);
-				}
-				Log.info("avgCost = " + avgTime + "ms ; recordSize = " + totalSize +
+				  }
+				  Log.info("avgCost = " + avgTime + "ms ; recordSize = " + totalSize +
 						  " ; extraCost = " + extraCost + "ms");
-			}
-			Log.info("Next sampleSize = " + nextSize);		
+				  
+				  long time_budget = (long) ((deadline - System.currentTimeMillis()) * sample2ndRoundPctg
+						  				- extraCost);
+				  if (time_budget > 0) {
+					  Log.info("Next sampleSize = " + nextSize + " (this may be inaccurate) sampleTime = " + 
+							  	time_budget + " ms");
+					  AdjustDistribution(distribution); // We do not want full distribution, neither average distribution.
+					  sample_len = RandomSampleWithDistributionByTime(files, distribution, time_budget, nextSize,
+							  											true, inputfiles);
+					  //originjob.clearEVStatsSet(); // Clear EVStats ???
+				  } else {
+					  Log.warn("Not enough time budget for Round-2, skipped!");
+				  }
+			  } else if (runCount >= 3) {
+				  distribution = originjob.processEVStats();
+				  long avgTime = Long.valueOf(originjob.evStats.getAggreStat("time_per_record")); // in millisecond
+				  int totalSize = Integer.valueOf(originjob.evStats.getAggreStat("total_size")); 			  
+				  // NOTE: when computing extraCost and nextSize, we need to consider the number of parallel
+				  // Map slots.
+				  if (avgTime > 0) {
+					  extraCost = totalTimeCost - avgTime * totalSize / max_slotnum; // in millisecond
+					  nextSize = (int) ((deadline - System.currentTimeMillis() - extraCost)
+							  / avgTime * max_slotnum);
+				  }
+				  Log.info("avgCost = " + avgTime + "ms ; recordSize = " + totalSize +
+						  " ; extraCost = " + extraCost + "ms");
+				  
+				  long time_budget = (long) ((deadline - System.currentTimeMillis()) - extraCost);
+				  if (time_budget > 0 ){
+					  Log.info("Next sampleSize = " + nextSize + " (this may be inaccurate) sampleTime = " + 
+							  	time_budget + " ms");
+					  sample_len = RandomSampleWithDistributionByTime(files, distribution, time_budget, nextSize,
+							  											true, inputfiles);
+					  //originjob.clearEVStatsSet(); // Clear EVStats ???
+				  } else {
+					  Log.warn("Not enough time budget for Round-3, skipped!");
+				  }
+			  }
+			//Log.info("Next sampleSize = " + nextSize);		
 			if (nextSize <= 0) {
 				Log.info("Quit!");
 				break;
 			}
-			// get the files total size in a sample and determine the proper split size
-			List<SequenceFileRecord> inputfiles = new ArrayList<SequenceFileRecord>();
-			Long sample_len = 0L;
-			List<SequenceFileRecord> files = GetWholeFileRecordList();
-			long N = files.size(); // Total input records size.
-			if (distribution != null)
+			
+			/*if (distribution != null)
 				sample_len = RandomSampleWithDistribution(files, distribution, nextSize, true, inputfiles);	
 			else
-				sample_len = RandomSampleWithDirs(files, nextSize, inputfiles);
+				sample_len = RandomSampleWithDirs(files, nextSize, inputfiles);*/
 			Long splitsize = all_input_len/max_slotnum;
 			Log.info("max slot number = " + max_slotnum + "; split size = " + splitsize);
 			
@@ -168,15 +219,35 @@ public class SequenceFileSampleProc {
 			Log.info("After deadline: " + Math.abs(timeDiff) + "ms");
 		else
 			Log.info("Before deadline: " + Math.abs(timeDiff) + "ms");
-		  
+		
 		return true;
 	}
 	
-	
-	
-	
-	
-	  /**
+	// We adjust the distribution by adding every variance with the (max_var + min_var) / 2.0. 
+	// This is to average the distribution a bit since we do not trust it completely. 
+	  private void AdjustDistribution(Map<String, Stats> distribution) {
+		double minVar = Double.MAX_VALUE;
+		double maxVar = Double.MIN_VALUE;
+		for (String key : distribution.keySet()) {
+			double var = distribution.get(key).var;
+			if (var < minVar) {
+				minVar = var;
+			}
+			if (var > maxVar) {
+				maxVar = var;
+			}
+		}
+		double adjustedVar = (maxVar + minVar) / 2.0;
+		for (String key : distribution.keySet()) {
+			distribution.get(key).var += adjustedVar;
+		}
+		for (String key : distribution.keySet()) {
+	    	 Log.info("(after adjustment) " +  key + "\tavg = " + distribution.get(key).avg + "  var = " + distribution.get(key).var + " count = " +
+	    			  distribution.get(key).count);
+	     }
+	}
+
+	/**
 	   * 
 	   * @param pre_variable: the previously sampled variable, x_a
 	   * @param cur_variable: the randomly selected "next" variable, x_b
@@ -195,8 +266,8 @@ public class SequenceFileSampleProc {
 				  (2.0 * distribution.get(cur_variable).var);
 		  double beta_nxt = (distribution.get(nxt_variable).count - 1) /
 				  (2.0 * distribution.get(nxt_variable).var);
-		  // lamda = E(sigma_b^2 / sigma_a^2)
-		  double lamda = alpha_nxt * beta_cur / (beta_nxt * (alpha_cur - 1));
+		  // lamda = sqrt( E(sigma_b^2 / sigma_a^2) )
+		  double lamda = Math.sqrt( alpha_nxt * beta_cur / (beta_nxt * (alpha_cur - 1)) );
 		  if (lamda >= 1.0 ) {
 			  nxt_variable_real = nxt_variable;
 		  } else {
@@ -345,16 +416,124 @@ public class SequenceFileSampleProc {
 		}
 		return sample_len;
 	}
+	 
+	/**
+	   * 
+	   * @param files
+	   * @param distribution
+	   * @param time_total
+	   * @param num_total This parameter is useless unless useMHSampling is false, in which case we sampling 
+	   * 				  based on size proportion.
+	   * @param useMHSampling
+	   * @param res_list
+	   * @return
+	   */
+	  private Long RandomSampleWithDistributionByTime(List<SequenceFileRecord> files,
+			  Map<String, Stats> distribution,  long time_total, int num_total, boolean useMHSampling,
+			  List<SequenceFileRecord> res_list)
+	  {
+		  if (distribution == null || distribution.size() == 0) {
+			  return RandomSample(files, 0, res_list);
+		  }
+		  if (num_total > files.size())
+			  num_total = files.size();
+		  // Record the number of actual samples.
+		  Map<String, Double> sampledSize = new HashMap<String, Double>();
+		  // Get sample sizes from proportion distribution.
+		  Map<String, Double> sizeProportion = new HashMap<String, Double>();
+		  double total_var = 0;
+		  for (String key : distribution.keySet()) {
+			  sampledSize.put(key, 0.0);
+			  total_var += Math.sqrt( distribution.get(key).var);		  
+		  }
+		  for (String key : distribution.keySet()) {
+			  sizeProportion.put(key, num_total * Math.sqrt( distribution.get(key).var) / total_var);
+			  Log.info("RandomSample-Proportion: " + key + " " + sizeProportion.get(key));
+		  }
+			  
+		  int count = num_total;
+		  int time = 0;
+		  int failCount = 0;
+		  Random rand = new Random(); // This must be outside the loop.
+		  Long sample_len = new Long(0);
+		  String next_variable = ""; // The next should sampled variable by MH, x_i, e.g., camera-loc.
+		  while(time < time_total && count > 0.99)
+		  {
+			  int idx = rand.nextInt(files.size());
+			  SequenceFileRecord fileRec = files.get(idx);
+			  String folder = fileRec.getReduceKey();
+			  String cur_variable = folder;
+			  boolean isChosen = false;
+			  if (useMHSampling) { // MH sampling algorithm			  
+				  if (distribution.containsKey(cur_variable) && 
+						  (next_variable.equals("") || next_variable.equals(cur_variable))) {
+					  res_list.add(fileRec);
+					  sampledSize.put(cur_variable, sampledSize.get(cur_variable) + 1);	
+					  sample_len += files.get(idx).getLen();
+					  time += distribution.get(cur_variable).avg; // add the time cost for this variable
+					  count--;
+					  isChosen = true;
+					  // To find the next sample variable.
+					  int variable_idx = rand.nextInt(distribution.size());
+					  for (String key : distribution.keySet()) {
+						  if (variable_idx == 0) {
+							  next_variable = key;
+							  break;
+						  }
+						  variable_idx--;
+					  }
+					  // Determine the next vairable based on MH algorithm.
+					  next_variable = MHGetNextVariable(cur_variable, next_variable, distribution);
+				  }
+			  } else { // Sample based on size proportion
+				  for (String key : sizeProportion.keySet()) {
+					  if (key.equals(folder) && sizeProportion.get(key) >= 1.0) {
+						  sizeProportion.put(key, sizeProportion.get(key) - 1.0); // decrease one from quota
+						  res_list.add(fileRec);
+						  sampledSize.put(key, sampledSize.get(key) + 1);					  
+						  sample_len += files.get(idx).getLen();
+						  time += distribution.get(cur_variable).avg; // add the time cost for this variable
+						  count--;
+						  isChosen = true;
+						  break;
+					  }
+				  }
+			  }
+			  if (!isChosen)
+				  failCount++;
+			  else
+				  failCount = 0;
+			  // If we can not find valid samples after many tries, we accept it first if 
+			  // the folder (camera-loc) is of interest to us.
+			  if (failCount > 5 * time_total && failCount <= 5 * time_total ) {
+				  if (sizeProportion.containsKey(folder)) {
+					  sizeProportion.put(folder, sizeProportion.get(folder) - 1.0);
+					  res_list.add(fileRec);
+					  sampledSize.put(folder, sampledSize.get(folder) + 1);
+					  sample_len += files.get(idx).getLen();
+					  time += distribution.get(folder).avg; // add the time cost for this variable
+					  count--;
+					  failCount = 0;
+				  }
+			  } else if (failCount > 10 * time_total ) { // If failed too many times, just break.
+				  break;
+			  }
+		  }
+		  for (String key : sampledSize.keySet()) {
+			  Log.info("RandomSample-final: " + key + " " + sampledSize.get(key));
+		  }
+		  return sample_len;
+	  }
 	  
 	  
 	/**
 	 * Sample with input Dirs 
 	 * @param files
-	 * @param num
+	 * @param numPerFolder
 	 * @param res_list
 	 * @return
 	 */
-	private Long RandomSampleWithDirs(List<SequenceFileRecord> files, int num, List<SequenceFileRecord> res_list) {
+	private Long RandomSampleWithDirs(List<SequenceFileRecord> files, int numPerFolder, List<SequenceFileRecord> res_list) {
 		Map<String, Stats> sizeProportion = new HashMap<String, Stats>();
 		for(int i=0; i<files.size(); i++)
 		{
@@ -363,6 +542,8 @@ public class SequenceFileSampleProc {
 			newStats.var = 1.0;
 			sizeProportion.put(loc, newStats); // average among directories.
 		}
+		int num = numPerFolder * sizeProportion.size(); // sum = #folder * numPerFolder.
+		Log.info("Next sampleSize = " + num);
 		return RandomSampleWithDistribution(files, sizeProportion, num, false, res_list);
 	}
 	
@@ -406,10 +587,6 @@ public class SequenceFileSampleProc {
 		}
 		Log.info("File number = " + totalfilenum);
 	}  
-	
-	
-	
-	  
 	
 	// Get the folder name from a full path name, which is the deepest directory name.
 	private String GetFolderFromFullPath(String path) {
