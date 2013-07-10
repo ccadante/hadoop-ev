@@ -46,6 +46,8 @@ public class SequenceFileSampleProc {
 	private long totalfilenum = 0;
 	
 	private int timeConstraint;
+	private double errorConstraint;
+	private double errorConstraintConfidence;
 	private int initSampleRound;
 	private int initSampleSize;
 	private int sampleSizePerFolder;
@@ -63,6 +65,14 @@ public class SequenceFileSampleProc {
 		
 		// Get time constraint.
 		timeConstraint = job.getConfiguration().getInt("mapred.deadline.second", 150);
+		// Get error constraint.
+		errorConstraint = job.getConfiguration().getFloat("mapred.deadline.error", (float) 1.0);
+		// Get error constraint confidence.
+		// NOTE that currently we only manually choose the confidence like 0.90 or 0.95. Change of this
+		// value requires update of the std variance's coefficient in processReduceResults() in Job.java.
+		errorConstraintConfidence = job.getConfiguration().getFloat("mapred.deadline.errorConfidence",
+				                                                    (float) 0.95);
+		
 		// NOTE that we are using 3-rounds sampling as our bottomline workflow: 1st round to get time cost of 
 		// one map; 2nd round to get the variance of variables; 3rd round to consume all the rest time.
 		// In experiments, we may skip 1st round sometimes assuming we have prior knowledge of time cost of 
@@ -90,7 +100,7 @@ public class SequenceFileSampleProc {
 			return false;
 		}
 		return true;
-	}
+	}	
 	
 	public boolean start() throws IOException, InterruptedException, ClassNotFoundException
 	{
@@ -134,7 +144,7 @@ public class SequenceFileSampleProc {
 							  / avgTime * max_slotnum);
 				  }
 				  Log.info("avgCost = " + avgTime + "ms ; recordSize = " + totalSize +
-						  " ; extraCost = " + extraCost + "ms");
+						  " ; extraCost = " + extraCost + "ms ; totalCost = " + totalTimeCost + "ms");
 				  
 				  long time_budget = (long) ((deadline - System.currentTimeMillis()) * sample2ndRoundPctg
 						  				- extraCost);
@@ -160,7 +170,7 @@ public class SequenceFileSampleProc {
 							  / avgTime * max_slotnum);
 				  }
 				  Log.info("avgCost = " + avgTime + "ms ; recordSize = " + totalSize +
-						  " ; extraCost = " + extraCost + "ms");
+						  " ; extraCost = " + extraCost + "ms ; totalCost = " + totalTimeCost + "ms");
 				  
 				  long time_budget = (long) ((deadline - System.currentTimeMillis()) - extraCost);
 				  if (time_budget > 0 ){
@@ -170,7 +180,7 @@ public class SequenceFileSampleProc {
 							  											true, inputfiles);
 					  //originjob.clearEVStatsSet(); // Clear EVStats ???
 				  } else {
-					  Log.warn("Not enough time budget for Round-3, skipped!");
+					  Log.warn("Not enough time budget for Round-" + runCount + ", skipped!");
 				  }
 			  }
 			//Log.info("Next sampleSize = " + nextSize);		
@@ -210,7 +220,7 @@ public class SequenceFileSampleProc {
 			*/
 			newjob.waitForCompletion(true);
 			  
-			double[] results = originjob.processReduceResults(inputfiles.size(), N, OpType.AVG);
+			double[] results = originjob.processReduceResults(inputfiles.size(), N, OpType.SUM);
 			Log.info("RESULT ESTIMATION: sum(avg(Loc)) = " + results[0] + "+-" + results[1] + 
 					  " (95% confidence).\n");
 		}
@@ -219,6 +229,141 @@ public class SequenceFileSampleProc {
 			Log.info("After deadline: " + Math.abs(timeDiff) + "ms");
 		else
 			Log.info("Before deadline: " + Math.abs(timeDiff) + "ms");
+		
+		return true;
+	}
+	
+	
+	public boolean startWithErrorContraint() throws IOException, InterruptedException, ClassNotFoundException
+	{
+		int runCount = 0;
+		long timer = System.currentTimeMillis();
+		
+		/* start cache job first */
+//		CacheJob cachejob = new CacheJob(originjob, keyreclist);
+//		cachejob.Start();
+		
+		/* loop until deadline */
+		List<SequenceFileRecord> files = GetWholeFileRecordList();
+		long N = files.size(); // Total input records size.		
+		double error = Double.MAX_VALUE;
+		double sampleEnlargeScale = 1.0; // The next sample size scale comparing to previous sample size.
+		long preTimeBudget = 0;
+		while(error > errorConstraint)
+		{		
+			runCount++;
+			Log.info("*** Sampling Round - " + runCount + " ***");
+			long totalTimeCost = System.currentTimeMillis() - timer;
+			timer = System.currentTimeMillis();
+			long extraCost = 0;
+			Log.info("Target error: " + errorConstraint + " (95%)\t Current error: " + error);
+			  
+			Map<String, Stats> distribution = null;
+			int nextSize = 1;
+			// get the files total size in a sample and determine the proper split size
+			List<SequenceFileRecord> inputfiles = new ArrayList<SequenceFileRecord>();
+			Long sample_len = 0L;
+			if (runCount == 1) {
+				//nextSize = runCount * initSampleSize; 
+				sample_len = RandomSampleWithDirs(files, sampleSizePerFolder, inputfiles);
+			} else if (runCount == 2) {
+				  distribution = originjob.processEVStats();
+				  long avgTime = Long.valueOf(originjob.evStats.getAggreStat("time_per_record")); // in millisecond
+				  int totalSize = Integer.valueOf(originjob.evStats.getAggreStat("total_size")); 			  
+				  // NOTE: when computing extraCost and nextSize, we need to consider the number of parallel
+				  // Map slots.
+				  if (avgTime > 0) {
+					  extraCost = totalTimeCost - avgTime * totalSize / max_slotnum; // in millisecond
+				  }
+				  Log.info("avgCost = " + avgTime + "ms ; recordSize = " + totalSize +
+						  " ; extraCost = " + extraCost + "ms ; totalCost = " + totalTimeCost + "ms");
+				  // Enlarge time budget by 5 times at most in the 2nd round.
+				  sampleEnlargeScale = Math.min(5.0, sampleEnlargeScale); 
+				  long time_budget = (long) ((totalTimeCost - extraCost) * sampleEnlargeScale);
+				  preTimeBudget = time_budget;
+				  nextSize = (int) (time_budget / avgTime * max_slotnum);
+				  if (time_budget > 0) {
+					  Log.info("Next sampleSize = " + nextSize + " (this may be inaccurate) sampleTime = " + 
+							  	time_budget + " ms  (sampleEnlargeScale = " + sampleEnlargeScale + ")");
+					  AdjustDistribution(distribution); // We do not want full distribution, neither average distribution.
+					  sample_len = RandomSampleWithDistributionByTime(files, distribution, time_budget, nextSize,
+							  											true, inputfiles);
+					  //originjob.clearEVStatsSet(); // Clear EVStats ???
+				  } else {
+					  Log.warn("Not enough time budget for Round-2, skipped!");
+				  }
+			  } else if (runCount >= 3) {
+				  distribution = originjob.processEVStats();
+				  long avgTime = Long.valueOf(originjob.evStats.getAggreStat("time_per_record")); // in millisecond
+				  int totalSize = Integer.valueOf(originjob.evStats.getAggreStat("total_size")); 			  
+				  // NOTE: when computing extraCost and nextSize, we need to consider the number of parallel
+				  // Map slots.
+				  if (avgTime > 0) {
+					  extraCost = totalTimeCost - avgTime * totalSize / max_slotnum; // in millisecond
+					  nextSize = 1;
+				  }
+				  Log.info("avgCost = " + avgTime + "ms ; recordSize = " + totalSize +
+						  " ; extraCost = " + extraCost + "ms ; totalCost = " + totalTimeCost + "ms");
+				  
+				  // Enlarge time budget by 10 times at most in the 3nd round or later.
+				  sampleEnlargeScale = Math.min(10.0, sampleEnlargeScale); 
+				  long time_budget = (long) (preTimeBudget  * sampleEnlargeScale);
+				  preTimeBudget = time_budget;
+				  nextSize = (int) (time_budget / avgTime * max_slotnum);
+				  if (time_budget > 0 ){
+					  Log.info("Next sampleSize = " + nextSize + " (this may be inaccurate) sampleTime = " + 
+							  	time_budget + " ms  (sampleEnlargeScale = " + sampleEnlargeScale + ")");
+					  sample_len = RandomSampleWithDistributionByTime(files, distribution, time_budget, nextSize,
+							  											true, inputfiles);
+					  //originjob.clearEVStatsSet(); // Clear EVStats ???
+				  } else {
+					  Log.warn("Not enough time budget for Round-" + runCount + ", skipped!");
+				  }
+			  }
+			//Log.info("Next sampleSize = " + nextSize);		
+			if (nextSize <= 0) {
+				Log.info("Quit!");
+				break;
+			}
+			
+			/*if (distribution != null)
+				sample_len = RandomSampleWithDistribution(files, distribution, nextSize, true, inputfiles);	
+			else
+				sample_len = RandomSampleWithDirs(files, nextSize, inputfiles);*/
+			Long splitsize = all_input_len/max_slotnum;
+			Log.info("max slot number = " + max_slotnum + "; split size = " + splitsize);
+			
+			Job newjob = new Job(originjob.getConfiguration(), "sample_" + runCount);
+			Log.info(newjob.getJar());
+			newjob.getConfiguration().set("mapred.min.split.size", splitsize.toString());
+			Log.info("minsize = " + FileInputFormat.getMinSplitSize(newjob));
+			Log.info("maxsize = " + FileInputFormat.getMaxSplitSize(newjob));
+			FileOutputFormat.setOutputPath(newjob, 
+					new Path(originjob.getConfiguration().get(("mapred.output.dir")) + "_" + runCount));
+			
+			/* set input filter */
+			List<String> inputstrs = new ArrayList<String>();
+			for (SequenceFileRecord sfr : inputfiles)
+				inputstrs.add(sfr.getCacheKey());
+			SequenceFileInputFilter.ListFilter.setListFilter(newjob.getConfiguration(), inputstrs);
+			
+			// all input files are included in newjob
+			/*
+			FileInputFormat.setInputPaths(newjob, new Path(inputfiles.get(0)));
+			for (int j=1; j<inputfiles.size(); j++)
+			{
+				FileInputFormat.addInputPath(newjob, new Path(inputfiles.get(j)));
+			}
+			*/
+			newjob.waitForCompletion(true);
+			  
+			double[] results = originjob.processReduceResults(inputfiles.size(), N, OpType.SUM);
+			Log.info("RESULT ESTIMATION: sum(avg(Loc)) = " + results[0] + "+-" + results[1] + 
+					  " (95% confidence).\n");
+			error = results[1];
+			sampleEnlargeScale = Math.pow((error / errorConstraint), 2.0); // Update sampleEnlargeScale
+		}
+		Log.info("*** Job is done! ***");
 		
 		return true;
 	}

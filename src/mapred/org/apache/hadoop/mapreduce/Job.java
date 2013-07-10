@@ -600,7 +600,7 @@ public class Job extends JobContext {
 	  {
 		  LOG.info("@@@@@ sequence file branch @@@@@");
 		  SequenceFileSampleProc sfsp = new SequenceFileSampleProc();
-		  return sfsp.setup(this) && sfsp.start();
+		  return sfsp.setup(this) && sfsp.start(); // sfsp.startWithErrorContraint();
 	  }
 	  
 	  String dirs = this.getConfiguration().get("mapred.input.dir", "");
@@ -729,7 +729,7 @@ public class Job extends JobContext {
 			
 		  newjob.waitForCompletion(true);
 		  
-		  double[] results = processReduceResults(inputfiles.size(), N, OpType.AVG);
+		  double[] results = processReduceResults(inputfiles.size(), N, OpType.SUM);
 		  LOG.info("RESULT ESTIMATION: sum(avg(Loc)) = " + results[0] + "+-" + results[1] + 
 				  " (95% confidence).\n");
 	  }
@@ -1172,7 +1172,7 @@ public class Job extends JobContext {
   public enum OpType {AVG, COUNT, SUM}
   
   public double[] processReduceResults(long n, long N, OpType op) {
-	  if (op == OpType.AVG && reduceResults.size() > 1) {
+	  if (op == OpType.SUM && reduceResults.size() > 1) {
 		  double final_sum = 0;
 		  double final_var = 0;
 		  for (int i=0; i<reduceResults.get(0).size(); i++) {
