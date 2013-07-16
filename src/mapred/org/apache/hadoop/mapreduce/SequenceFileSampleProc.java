@@ -107,7 +107,7 @@ public class SequenceFileSampleProc {
 		int runCount = 0;
 		long deadline = System.currentTimeMillis() + timeConstraint * 1000; // in millisecond
 		long timer = System.currentTimeMillis();
-		
+
 		/* start cache job first */
 //		CacheJob cachejob = new CacheJob(originjob, keyreclist);
 //		cachejob.Start();
@@ -135,12 +135,16 @@ public class SequenceFileSampleProc {
 			} else if (runCount == 2) {
 				  distribution = originjob.processEVStats();
 				  long avgTime = Long.valueOf(originjob.evStats.getAggreStat("time_per_record")); // in millisecond
-				  int totalSize = Integer.valueOf(originjob.evStats.getAggreStat("total_size")); 			  
+				  int totalSize = Integer.valueOf(originjob.evStats.getAggreStat("total_size")); 
+				  long firstMapperTime = Long.valueOf(originjob.evStats.getAggreStat("first_mapper_time")); // in millisecond
+				  long lastMapperTime = Long.valueOf(originjob.evStats.getAggreStat("last_mapper_time")); // in millisecond
+				  long avgReducerTime = Long.valueOf(originjob.evStats.getAggreStat("avg_reducer_time")); // in millisecond
 				  // NOTE: when computing extraCost and nextSize, we need to consider the number of parallel
 				  // Map slots.
 				  if (avgTime > 0) {
-					  extraCost = totalTimeCost - avgTime * totalSize / max_slotnum; // in millisecond
-					  nextSize = (int) ((deadline - System.currentTimeMillis() - extraCost)
+					  //extraCost = totalTimeCost - avgTime * totalSize / max_slotnum; // in millisecond
+					  extraCost = totalTimeCost - (lastMapperTime - firstMapperTime);
+					  nextSize = (int) (((deadline - System.currentTimeMillis()) * sample2ndRoundPctg - extraCost)
 							  / avgTime * max_slotnum);
 				  }
 				  Log.info("avgCost = " + avgTime + "ms ; recordSize = " + totalSize +
@@ -162,11 +166,15 @@ public class SequenceFileSampleProc {
 				  distribution = originjob.processEVStats();
 				  long avgTime = Long.valueOf(originjob.evStats.getAggreStat("time_per_record")); // in millisecond
 				  int totalSize = Integer.valueOf(originjob.evStats.getAggreStat("total_size")); 			  
+				  long firstMapperTime = Long.valueOf(originjob.evStats.getAggreStat("first_mapper_time")); // in millisecond
+				  long lastMapperTime = Long.valueOf(originjob.evStats.getAggreStat("last_mapper_time")); // in millisecond
+				  long avgReducerTime = Long.valueOf(originjob.evStats.getAggreStat("avg_reducer_time")); // in millisecond
 				  // NOTE: when computing extraCost and nextSize, we need to consider the number of parallel
 				  // Map slots.
 				  if (avgTime > 0) {
-					  extraCost = totalTimeCost - avgTime * totalSize / max_slotnum; // in millisecond
-					  nextSize = (int) ((deadline - System.currentTimeMillis() - extraCost)
+					  //extraCost = totalTimeCost - avgTime * totalSize / max_slotnum; // in millisecond
+					  extraCost = totalTimeCost - (lastMapperTime - firstMapperTime);
+					  nextSize = (int) ((deadline - System.currentTimeMillis() - extraCost - avgReducerTime)
 							  / avgTime * max_slotnum);
 				  }
 				  Log.info("avgCost = " + avgTime + "ms ; recordSize = " + totalSize +

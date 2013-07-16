@@ -61,13 +61,17 @@ public class EVStatsServer implements Runnable {
 				EVStatistics evStat = null;
 				ArrayList<Double> final_val = null;
 				ArrayList<Double> final_var = null;
+				ArrayList<Double> reducer_time = null;
+				ArrayList<Double> mapper_time = null;
 				LOG.info("statistics built, state = " + state + "; data size = " + data_size);
 				if (state == 0) {
 					evStat = new EVStatistics();
+					mapper_time = new ArrayList<Double>();
 				}
 				else if (state == 1) {
 					final_val = new ArrayList<Double>();
 					final_var = new ArrayList<Double>();
+					reducer_time = new ArrayList<Double>();
 				}
 				String stat_piece;
 				while((stat_piece = ipt.readLine()) != null){
@@ -82,14 +86,26 @@ public class EVStatsServer implements Runnable {
 							evStat.addTimeStat(contents[1], contents[2]);
 						else if (Integer.parseInt(contents[0]) == 1)  // Cache data
 							evStat.addCacheItem(contents[1], contents[2]);
-					} else if (state == 1) { // Reduce results
+						else if (Integer.parseInt(contents[0]) == 2) // Mapper times
+						{
+							mapper_time.add(Double.parseDouble(contents[1]));
+							mapper_time.add(Double.parseDouble(contents[2]));
+						}
+					} else if (state == 1) { // Reducer
 						String[] contents = stat_piece.split(";");
-						if (contents.length != 2) {
+						if (contents.length != 3) {
 							LOG.warn("Invalid ReduceResult format.");
 							continue;
 						}
-						final_val.add(Double.parseDouble(contents[0]));
-						final_var.add(Double.parseDouble(contents[1]));
+						if (Integer.parseInt(contents[0]) == 0)	// Reducer results
+						{
+							final_val.add(Double.parseDouble(contents[1]));
+							final_var.add(Double.parseDouble(contents[2]));
+						} else if (Integer.parseInt(contents[0]) == 1)  // Reducer time
+						{
+							reducer_time.add(Double.parseDouble(contents[1]));
+							reducer_time.add(Double.parseDouble(contents[2]));
+						}						
 					}
 				}
 				if (state == 0) {
@@ -99,10 +115,12 @@ public class EVStatsServer implements Runnable {
 					//server.jobTracker.addEVStats(evStat);
 					LOG.warn("Added EVStat into Job with size = " + evStat.getSize() +
 							"  and one value = " + evStat.getFirstStat() + "us");
+					server.job.addMapperTime(mapper_time);
 				} else if (state == 1) {
 					server.job.addReduceResults(final_val, final_var);
 					LOG.warn("Added ReduceResult into Job with size = " + final_val.size() +
 							" and one value = " + final_val.get(0));
+					server.job.addReduceTime(reducer_time);
 				}
 			}
 			catch (Exception e) {

@@ -153,6 +153,10 @@ public class Mapper<KEYIN, VALUEIN, KEYOUT, VALUEOUT> {
     	myEVStat.addCacheItem(lastKeyIn.toString(), lastValueOut.toString());
     }
     
+    public void addTimeCost(long startTime, long timeCost) {
+    	myEVStat.addTimeCost((double) startTime, (double) timeCost);
+    }
+    
     public EVStatistics getEVStats(){
     	return myEVStat;
     }
@@ -191,6 +195,7 @@ public class Mapper<KEYIN, VALUEIN, KEYOUT, VALUEOUT> {
    * @throws IOException
    */
   public void run(Context context) throws IOException, InterruptedException {
+	  long t0 = System.currentTimeMillis();
     setup(context);
     while (context.nextKeyValue()) {
       /* cache begin*/
@@ -217,6 +222,11 @@ public class Mapper<KEYIN, VALUEIN, KEYOUT, VALUEOUT> {
 //      }
     }
     cleanup(context);
+    long t3 = System.currentTimeMillis();
+    if (context.getConfiguration().getInt("mapred.evstatistic.enable", 1) == 1)
+    {
+    	context.addTimeCost(t0, t3 - t0); // In milliseconds
+    }
   }
   
   /**

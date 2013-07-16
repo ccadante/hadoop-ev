@@ -2938,7 +2938,7 @@ class ReduceTask extends Task {
   }
   
   private void sendReduceResultToJob(ArrayList<ArrayList<Double>> results){
-	  if (results.size() < 2) {
+	  if (results.size() < 3) {
 		  LOG.warn("Invalid Reduce result format!");
 		  return;
 	  }
@@ -2963,9 +2963,11 @@ class ReduceTask extends Task {
 			output.writeBytes(1 + "\n"); // Write data type first.
 			output.writeBytes(results.get(0).size() + "\n");
 			for (int i=0; i<results.get(0).size(); i++) {
-				String content = results.get(0).get(i) + ";" + results.get(1).get(i);
+				String content = "0" + ";" + results.get(0).get(i) + ";" + results.get(1).get(i);
 				output.writeBytes(content + "\n");
 			}
+			String content = "1" + ";" + results.get(2).get(0) + ";" + results.get(2).get(1);
+			output.writeBytes(content + "\n");
 			break;
 		  } catch (UnknownHostException e) {
 			e.printStackTrace();

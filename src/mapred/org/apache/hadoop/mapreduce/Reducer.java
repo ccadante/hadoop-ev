@@ -123,6 +123,8 @@ public class Reducer<KEYIN,VALUEIN,KEYOUT,VALUEOUT> {
     extends ReduceContext<KEYIN,VALUEIN,KEYOUT,VALUEOUT> {
 	  ArrayList<Double> final_vals = new ArrayList<Double>();
 	  ArrayList<Double> final_vars = new ArrayList<Double>();
+	  ArrayList<Double> reducer_time = new ArrayList<Double>(); // Two items only: startTime, timeCost
+	  
     public Context(Configuration conf, TaskAttemptID taskid,
                    RawKeyValueIterator input, 
                    Counter inputKeyCounter,
@@ -147,6 +149,11 @@ public class Reducer<KEYIN,VALUEIN,KEYOUT,VALUEOUT> {
     	Log.info("reduce value = " + value.toString());
 	}
     
+    public void addTimeCost(long startTime, long timecost) {
+    	reducer_time.add((double) startTime);
+    	reducer_time.add((double) timecost);
+    }
+    
     public ArrayList<ArrayList<Double>> getValueVar() {
     	Log.info("getValueVar: " + final_vals.size());
     	if (final_vals.size() == 0) {
@@ -155,6 +162,7 @@ public class Reducer<KEYIN,VALUEIN,KEYOUT,VALUEOUT> {
     	ArrayList<ArrayList<Double>> ret = new ArrayList<ArrayList<Double>>();
     	ret.add(final_vals);
     	ret.add(final_vars);
+    	ret.add(reducer_time);
     	return ret;
     }
   }
@@ -194,11 +202,17 @@ public class Reducer<KEYIN,VALUEIN,KEYOUT,VALUEOUT> {
    * control how the reduce task works.
    */
   public void run(Context context) throws IOException, InterruptedException {
+	  long t1 = System.currentTimeMillis();
     setup(context);
     while (context.nextKey()) {
       Log.info("reducer running: " + context.getCurrentKey().toString());
       reduce(context.getCurrentKey(), context.getValues(), context);
     }
     cleanup(context);
+    long t2 = System.currentTimeMillis();
+    if (context.getConfiguration().getInt("mapred.evstatistic.enable", 1) == 1)
+    {
+    	context.addTimeCost(t1, t2 - t1); // In milliseconds
+    }
   }
 }

@@ -1049,6 +1049,8 @@ public class Job extends JobContext {
   Set<EVStatistics> evStatsSet = new HashSet<EVStatistics>();
   EVStatistics evStats = new EVStatistics();
   ArrayList<ArrayList<Double>> reduceResults = new ArrayList<ArrayList<Double>>(); 
+  ArrayList<ArrayList<Double>> reducerTimes = new ArrayList<ArrayList<Double>>(); 
+  ArrayList<ArrayList<Double>> mapperTimes = new ArrayList<ArrayList<Double>>(); 
   Random rand = new Random(); // It is better to share a global Random class.
   
   /**
@@ -1139,14 +1141,44 @@ public class Job extends JobContext {
     			  final_stat.get(key).count);
       }
       
-      // Set average values.
+      // Process mapper_time and reducer_time
+      Long firstMapperTime = Long.MAX_VALUE;
+      Long lastMapperTime = Long.MIN_VALUE;
+      for (ArrayList<Double> times : mapperTimes) {
+    	  firstMapperTime = Math.min(firstMapperTime, Math.round(times.get(0)));
+    	  lastMapperTime = Math.max(lastMapperTime, Math.round(times.get(0) + times.get(1)));
+      }      
+      Long avgReducerTime = 0L;
+      for (ArrayList<Double> times : reducerTimes) {
+    	  avgReducerTime += Math.round(times.get(1));
+      }
+      if (reducerTimes.size() > 0)
+    	  avgReducerTime = avgReducerTime / reducerTimes.size();
+      else
+    	  LOG.warn("Invalid reducerTimes (probably also mapperTimes)!");
+      // Do remember to clear mapperTimes and reducerTimes every time!
+      mapperTimes.clear();
+      reducerTimes.clear();
+      
+      // Set evStats values.
       if(totalSize > 0) {
     	  evStats.addAggreStat("time_per_record", String.valueOf(avgTime / totalSize));
     	  // We need actualSize rather than the size after removing outlier.
     	  evStats.addAggreStat("total_size", String.valueOf(actualSize));
+    	  evStats.addAggreStat("first_mapper_time", String.valueOf(firstMapperTime));
+    	  evStats.addAggreStat("last_mapper_time", String.valueOf(lastMapperTime));
+    	  evStats.addAggreStat("avg_reducer_time", String.valueOf(avgReducerTime));
+    	  LOG.info("firstMapperTime = " + firstMapperTime + "  lastMapperTime = " + lastMapperTime + "  " +
+    			  "whole map phase = " + (lastMapperTime - firstMapperTime) + 
+    			  "ms  avgReducerTime = " + avgReducerTime + "ms");
       } else {
     	  evStats.addAggreStat("time_per_record", String.valueOf(0));
     	  evStats.addAggreStat("total_size", String.valueOf(0));
+    	  evStats.addAggreStat("first_mapper_time", String.valueOf(0));
+    	  evStats.addAggreStat("avg_reducer_time", String.valueOf(0));
+    	  LOG.info("firstMapperTime = " + 0 + "  lastMapperTime = " + 0 + "  " +
+    			  "whole map phase = " + (0 - 0) + 
+    			  "ms  avgReducerTime = " + 0 + "ms");
       }
       // Clear the processed evStats.
       //evStatsSet.clear();
@@ -1167,6 +1199,14 @@ public class Job extends JobContext {
   public void addReduceResults(ArrayList<Double> final_val, ArrayList<Double> final_var) {
 	  reduceResults.add(final_val);
 	  reduceResults.add(final_var);
+  }
+  
+  public void addReduceTime(ArrayList<Double> reducer_time) {
+	  reducerTimes.add(reducer_time);
+  }
+  
+  public void addMapperTime(ArrayList<Double> mapper_time) {
+	  mapperTimes.add(mapper_time);
   }
   
   public enum OpType {AVG, COUNT, SUM}

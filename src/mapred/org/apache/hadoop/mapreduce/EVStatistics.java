@@ -34,7 +34,8 @@ import org.mortbay.log.Log;
 public class EVStatistics {
 	public Map<StatsType, Long> timeProfile = new HashMap<StatsType, Long>();
 	public Map<String, String> aggreStats = new HashMap<String, String>();
-	
+	ArrayList<Double> time_record = new ArrayList<Double>(); // Two items only: startTime, timeCost
+	  
 	// A cache for a mapper task
 	public List<CacheItem> cacheList = new ArrayList<CacheItem>();
 	
@@ -165,6 +166,11 @@ public class EVStatistics {
 		cacheList.add(new CacheItem(key, value));
 	}
 	
+	public void addTimeCost(double startTime, double timeCost) {
+		time_record.add(startTime);
+		time_record.add(timeCost);
+	}
+	
 	// Transmitting data via Socket
 	public void sendData(DataOutputStream output) throws IOException{
 		output.writeBytes(0 + "\n"); // Write data type first.
@@ -177,6 +183,10 @@ public class EVStatistics {
 		for (CacheItem ci : cacheList)	{
 			String content = "1" + ";" + ci.key + ";" + ci.value;
 			Log.info("cache content: " + content);
+			output.writeBytes(content + "\n");
+		}
+		if (time_record.size() == 2) {
+			String content = "2" + ";" + time_record.get(0) + ";" + time_record.get(1);
 			output.writeBytes(content + "\n");
 		}
 		//Log.warn("SendData done.");
@@ -201,4 +211,6 @@ public class EVStatistics {
 			addTimeStat(new StatsType(statType), time);
 		}
 	}
+
+	
 }
