@@ -2,6 +2,8 @@ package org.apache.hadoop.mapreduce;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Hashtable;
 import java.util.List;
@@ -18,8 +20,11 @@ import org.apache.hadoop.hdfs.DistributedFileSystem;
 import org.apache.hadoop.io.LongWritable;
 import org.apache.hadoop.io.SequenceFile;
 import org.apache.hadoop.io.Text;
+import org.apache.hadoop.mapred.DirUtil;
 import org.apache.hadoop.mapreduce.EVStatistics.Stats;
+import org.apache.hadoop.mapreduce.Job.FileStatusList;
 import org.apache.hadoop.mapreduce.Job.OpType;
+import org.apache.hadoop.mapreduce.Job.FileStatusList.FileComparator;
 import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
 import org.apache.hadoop.mapreduce.lib.input.SampleInputUtil;
 import org.apache.hadoop.mapreduce.lib.input.SamplePath;
@@ -212,6 +217,7 @@ public class MapFileSampleProc {
 					new Path(originjob.getConfiguration().get(("mapred.output.dir")) + "_" + runCount));
 			
 			/* set input file path */;
+			inputfiles = GetReorderedInput(inputfiles);
 			String[] inputarr = new String[inputfiles.size()];
 			int i = 0;
 			for (SamplePath sp : inputfiles)
@@ -354,6 +360,7 @@ public class MapFileSampleProc {
 					new Path(originjob.getConfiguration().get(("mapred.output.dir")) + "_" + runCount));
 			
 			/* set input filter */
+			inputfiles = GetReorderedInput(inputfiles);
 			String[] inputarr = new String[inputfiles.size()];
 			int i = 0;
 			for (SamplePath sp : inputfiles)
@@ -764,18 +771,57 @@ public class MapFileSampleProc {
 		return true;
 	}  
 	
-	// Get the folder name from a full path name, which is the deepest directory name.
-	private String GetFolderFromFullPath(String path) {
-		String folder = null;
-		try {
-			folder = path;
-			folder = folder.substring(0, folder.lastIndexOf("/"));
-//			folder = folder.substring(folder.lastIndexOf("/")+1);
-		} catch (Exception ex) {
-			  Log.info("GetFolderFromFullPath:" + ex.getMessage());
+	/**
+	 * Reorganize the input files
+	 * @param input
+	 * @return a map of (folder, sorted filename list)
+	 */
+	public Map<String, List<SamplePath>> ReorganizeInput(List<SamplePath> input)
+	{
+		Map<String, List<SamplePath>> retmap = new HashMap<String, List<SamplePath>>();
+		for(SamplePath sp : input)
+		{
+			String folder = sp.file_path.toString();
+			List<SamplePath> lsp = retmap.get(folder);
+			if (lsp == null)
+			{
+				List<SamplePath> newfsl = new ArrayList<SamplePath>();
+				newfsl.add(sp);
+				retmap.put(folder, newfsl);
+			}
+			else
+			{
+				lsp.add(sp);
+			}
 		}
-		return folder;
+		for (List<SamplePath> value : retmap.values())
+		{
+			Collections.sort(value, new FileComparator());
+		}
+		return retmap;
 	}
 	  
-	
+	public class FileComparator implements Comparator<SamplePath>
+	{
+		public int compare(SamplePath f1, SamplePath f2)
+		{
+			String fs1 = f1.sample_key;
+			String fs2 = f2.sample_key;
+			long fn1 = Long.parseLong(fs1.substring(fs1.lastIndexOf("/")+1, fs1.lastIndexOf(".")));
+			long fn2 = Long.parseLong(fs2.substring(fs2.lastIndexOf("/")+1, fs2.lastIndexOf(".")));
+			long diff = fn1 - fn2;
+			return (int)diff;
+		}
+	}
+
+	public List<SamplePath> GetReorderedInput(List<SamplePath> input)
+	{
+		Map<String, List<SamplePath>> inputmap = ReorganizeInput(input);
+		List<SamplePath> retlist = new ArrayList<SamplePath>();
+		for (List<SamplePath> lsp : inputmap.values())
+		{
+			retlist.addAll(lsp);
+		}
+		return retlist;
+	}
 }

@@ -22,6 +22,7 @@ import org.apache.hadoop.io.LongWritable;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapred.DirUtil;
 import org.apache.hadoop.mapred.JobConf;
+import org.apache.hadoop.mapreduce.lib.input.SamplePath;
 import org.apache.hadoop.mapreduce.lib.input.TextInputFormat;
 import org.apache.hadoop.mapreduce.Mapper.Context;
 import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
@@ -74,6 +75,28 @@ public class CacheJob {
 		SetupCacheJob(job, cachekeylist);
 	}
 	
+
+	/**
+	 * Constructor for CombineSampleInputFormat
+	 * @param job
+	 * @param file_rec_list_map
+	 * @throws ClassNotFoundException 
+	 * @throws IOException 
+	 * @throws IllegalStateException 
+	 */
+	public CacheJob(Job job, Hashtable<String, List<SamplePath>> file_rec_list_map) throws IllegalStateException, IOException, ClassNotFoundException
+	{
+		seqmode = 2;
+		List<String> cachekeylist = new ArrayList<String>();
+		for(List<SamplePath> lsfr : file_rec_list_map.values())
+		{
+			for(SamplePath sp : lsfr)
+			{
+				cachekeylist.add(sp.sample_key);
+			}
+		}
+		SetupCacheJob(job, cachekeylist);
+	}
 	
 	public void SetupCacheJob(Job job, List<String> fslist) throws IOException, IllegalStateException, ClassNotFoundException
 	{
