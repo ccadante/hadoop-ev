@@ -205,24 +205,25 @@ public class MapFileSampleProc {
 				sample_len = RandomSampleWithDistribution(files, distribution, nextSize, true, inputfiles);	
 			else
 				sample_len = RandomSampleWithDirs(files, nextSize, inputfiles);*/
-			Long splitsize = all_input_len/max_slotnum;
-			Log.info("max slot number = " + max_slotnum + "; split size = " + splitsize);
 			
 			Job newjob = new Job(originjob.getConfiguration(), "sample_" + runCount);
 			Log.info(newjob.getJar());
-			newjob.getConfiguration().set("mapred.min.split.size", splitsize.toString());
 			Log.info("minsize = " + FileInputFormat.getMinSplitSize(newjob));
 			Log.info("maxsize = " + FileInputFormat.getMaxSplitSize(newjob));
 			FileOutputFormat.setOutputPath(newjob, 
 					new Path(originjob.getConfiguration().get(("mapred.output.dir")) + "_" + runCount));
 			
+			for (SamplePath sp : inputfiles)
+			{
+				Log.info("$$$$$$$$$$  sample is = " + sp.file_path + "; key = " + sp.sample_key + "; len = " + sp.size);
+			}
 			/* set input file path */;
 			inputfiles = GetReorderedInput(inputfiles);
 			String[] inputarr = new String[inputfiles.size()];
 			int i = 0;
 			for (SamplePath sp : inputfiles)
 			{
-				inputarr[i] = sp.file_path + ":" + sp.sample_key + ":" + sp.size;
+				inputarr[i] = sp.file_path + SampleInputUtil.DELIMITER + sp.sample_key + SampleInputUtil.DELIMITER + sp.size;
 				i++;
 			}
 			String samp_input_str = StringUtils.join(inputarr, ",");
@@ -236,6 +237,8 @@ public class MapFileSampleProc {
 			}
 			*/
 			newjob.getConfiguration().set(SampleInputUtil.SAMP_DIR, samp_input_str);
+			Long splitsize = sample_len/max_slotnum;
+			newjob.getConfiguration().set("mapreduce.input.fileinputformat.split.maxsize", splitsize.toString());
 			newjob.waitForCompletion(true);
 			  
 			double[] results = originjob.processReduceResults(inputfiles.size(), N, OpType.SUM);
@@ -258,7 +261,7 @@ public class MapFileSampleProc {
 		long timer = System.currentTimeMillis();
 		
 		/* start cache job first */
-//		CacheJob cachejob = new CacheJob(originjob, keyreclist);
+//		CacheJob cachejob = new CacheJob(originjob, filereclist);
 //		cachejob.Start();
 		
 		/* loop until deadline */
@@ -348,12 +351,9 @@ public class MapFileSampleProc {
 				sample_len = RandomSampleWithDistribution(files, distribution, nextSize, true, inputfiles);	
 			else
 				sample_len = RandomSampleWithDirs(files, nextSize, inputfiles);*/
-			Long splitsize = all_input_len/max_slotnum;
-			Log.info("max slot number = " + max_slotnum + "; split size = " + splitsize);
 			
 			Job newjob = new Job(originjob.getConfiguration(), "sample_" + runCount);
 			Log.info(newjob.getJar());
-			newjob.getConfiguration().set("mapred.min.split.size", splitsize.toString());
 			Log.info("minsize = " + FileInputFormat.getMinSplitSize(newjob));
 			Log.info("maxsize = " + FileInputFormat.getMaxSplitSize(newjob));
 			FileOutputFormat.setOutputPath(newjob, 
@@ -365,7 +365,7 @@ public class MapFileSampleProc {
 			int i = 0;
 			for (SamplePath sp : inputfiles)
 			{
-				inputarr[i] = sp.file_path + ":" + sp.sample_key + ":" + sp.size;
+				inputarr[i] = sp.file_path + SampleInputUtil.DELIMITER + sp.sample_key + SampleInputUtil.DELIMITER + sp.size;
 				i++;
 			}
 			String samp_input_str = StringUtils.join(inputarr, ",");
@@ -379,6 +379,8 @@ public class MapFileSampleProc {
 			}
 			*/
 			newjob.getConfiguration().set(SampleInputUtil.SAMP_DIR, samp_input_str);
+			Long splitsize = sample_len/max_slotnum;
+			newjob.getConfiguration().set("mapreduce.input.fileinputformat.split.maxsize", splitsize.toString());
 			newjob.waitForCompletion(true);
 			  
 			double[] results = originjob.processReduceResults(inputfiles.size(), N, OpType.SUM);
@@ -734,6 +736,7 @@ public class MapFileSampleProc {
 		}
 		
 		Path homeDir = homeDirArr[0];
+		Log.info("$$$$$$$$$$$$   home dir = " + homeDir);
 		FileStatus[] mapFiles = hdfs.listStatus(homeDir);
 		
 		for (FileStatus mapfs : mapFiles)
@@ -807,8 +810,8 @@ public class MapFileSampleProc {
 		{
 			String fs1 = f1.sample_key;
 			String fs2 = f2.sample_key;
-			long fn1 = Long.parseLong(fs1.substring(fs1.lastIndexOf("/")+1, fs1.lastIndexOf(".")));
-			long fn2 = Long.parseLong(fs2.substring(fs2.lastIndexOf("/")+1, fs2.lastIndexOf(".")));
+			long fn1 = Long.parseLong(fs1.substring(fs1.lastIndexOf("/")+1, fs1.length()));
+			long fn2 = Long.parseLong(fs2.substring(fs2.lastIndexOf("/")+1, fs2.length()));
 			long diff = fn1 - fn2;
 			return (int)diff;
 		}

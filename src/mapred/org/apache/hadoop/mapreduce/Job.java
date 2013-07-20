@@ -44,6 +44,7 @@ import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapreduce.EVStatistics.Stats;
 import org.apache.hadoop.mapreduce.EVStatistics.StatsType;
 import org.apache.hadoop.mapreduce.TaskAttemptID;
+import org.apache.hadoop.mapreduce.lib.input.CombineSampleInputFormat;
 import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
 import org.apache.hadoop.mapreduce.lib.input.SequenceFileInputFilter;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
@@ -601,6 +602,13 @@ public class Job extends JobContext {
 		  LOG.info("@@@@@ sequence file branch @@@@@");
 		  SequenceFileSampleProc sfsp = new SequenceFileSampleProc();
 		  return sfsp.setup(this) && sfsp.start(); // sfsp.startWithErrorContraint();
+	  }
+	  /* If the input class is CombineSampleInputFormat */
+	  if (this.getInputFormatClass().equals(CombineSampleInputFormat.class))
+	  {
+		  LOG.info("@@@@@ combine sample branch @@@@@");
+		  MapFileSampleProc mfsp = new MapFileSampleProc();
+		  return mfsp.setup(this) && mfsp.start(); // mfsp.startWithErrorContraint();
 	  }
 	  
 	  String dirs = this.getConfiguration().get("mapred.input.dir", "");

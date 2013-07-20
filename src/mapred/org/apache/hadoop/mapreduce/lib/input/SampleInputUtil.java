@@ -7,13 +7,14 @@ import org.mortbay.log.Log;
 
 public class SampleInputUtil {
 	public static final String SAMP_DIR = "mapred.input.sample.dir";
+	public static final String DELIMITER = ";";
 	
 	public static SamplePath[] getInputSamplePaths(JobContext context) {
 	    String dirs = context.getConfiguration().get(SAMP_DIR, "");
 	    String [] list = StringUtils.split(dirs);
 	    SamplePath[] result = new SamplePath[list.length];
 	    for (int i = 0; i < list.length; i++) {
-	    	String[] file_key_size = list[i].split(":");
+	    	String[] file_key_size = list[i].split(DELIMITER);
 	    	result[i] = new SamplePath(new Path(file_key_size[0]), file_key_size[1], Long.parseLong(file_key_size[2]));
 	    }
 	    return result;
