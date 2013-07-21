@@ -51,24 +51,26 @@ public class EVStatsServer implements Runnable {
 		@Override
 		public void run() {
 			try {
-				synchronized(this) {
+				/*synchronized(this) {
 					job.dpInProc += 1;
-				}
+				}*/
 				BufferedReader ipt = new BufferedReader(new InputStreamReader(
 						socket.getInputStream()));
 				int state = Integer.valueOf(ipt.readLine());
 				int data_size = Integer.valueOf(ipt.readLine());
 				EVStatistics evStat = null;
+				ArrayList<String> final_keys = null;
 				ArrayList<Double> final_val = null;
 				ArrayList<Double> final_var = null;
 				ArrayList<Double> reducer_time = null;
 				ArrayList<Double> mapper_time = null;
-				LOG.info("statistics built, state = " + state + "; data size = " + data_size);
+				LOG.info("Statistics built, state = " + state + "; data size = " + data_size);
 				if (state == 0) {
 					evStat = new EVStatistics();
 					mapper_time = new ArrayList<Double>();
 				}
 				else if (state == 1) {
+					final_keys = new ArrayList<String>();
 					final_val = new ArrayList<Double>();
 					final_var = new ArrayList<Double>();
 					reducer_time = new ArrayList<Double>();
@@ -93,14 +95,15 @@ public class EVStatsServer implements Runnable {
 						}
 					} else if (state == 1) { // Reducer
 						String[] contents = stat_piece.split(";");
-						if (contents.length != 3) {
+						if (contents.length < 3) {
 							LOG.warn("Invalid ReduceResult format.");
 							continue;
 						}
 						if (Integer.parseInt(contents[0]) == 0)	// Reducer results
 						{
-							final_val.add(Double.parseDouble(contents[1]));
-							final_var.add(Double.parseDouble(contents[2]));
+							final_keys.add(contents[1]);
+							final_val.add(Double.parseDouble(contents[2]));
+							final_var.add(Double.parseDouble(contents[3]));
 						} else if (Integer.parseInt(contents[0]) == 1)  // Reducer time
 						{
 							reducer_time.add(Double.parseDouble(contents[1]));
@@ -113,23 +116,23 @@ public class EVStatsServer implements Runnable {
 					storeCache(evStat);
 //					closeHDFS();
 					//server.jobTracker.addEVStats(evStat);
-					LOG.warn("Added EVStat into Job with size = " + evStat.getSize() +
-							"  and one value = " + evStat.getFirstStat() + "us");
 					server.job.addMapperTime(mapper_time);
+					LOG.warn("Added EVStat(Map) into Job with size = " + evStat.getSize() +
+							"  and one time = " + evStat.getFirstStat() + "  mapper_time = " + mapper_time + "ms");
 				} else if (state == 1) {
-					server.job.addReduceResults(final_val, final_var);
-					LOG.warn("Added ReduceResult into Job with size = " + final_val.size() +
-							" and one value = " + final_val.get(0));
+					server.job.addReduceResults(final_keys, final_val, final_var);
 					server.job.addReduceTime(reducer_time);
+					LOG.warn("Added ReduceResult into Job with size = " + final_val.size() +
+							" and one value = " + final_val.get(0) + "  reducer_time = " + reducer_time + "ms");
 				}
 			}
 			catch (Exception e) {
 				LOG.error(e.getMessage());
 			}
 			finally {
-				synchronized(this) {
+				/*synchronized(this) {
 					job.dpInProc -= 1;
-				}
+				}*/
 				try {
 					socket.close();
 				}
@@ -237,14 +240,11 @@ public class EVStatsServer implements Runnable {
 				if (skt != null) {
 					Thread dpthd = new Thread(new DataProcess(this, skt));
 					dpthd.start();
-					dpthd.join();
 				}
 			}
 			catch (ClosedByInterruptException e) {
 				LOG.error(e.getMessage());
 			} catch (IOException e) {
-				LOG.error(e.getMessage());
-			} catch (InterruptedException e) {
 				LOG.error(e.getMessage());
 			}
 		}

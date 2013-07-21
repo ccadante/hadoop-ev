@@ -121,6 +121,7 @@ public class Reducer<KEYIN,VALUEIN,KEYOUT,VALUEOUT> {
 
   public class Context 
     extends ReduceContext<KEYIN,VALUEIN,KEYOUT,VALUEOUT> {
+	  ArrayList<String> final_keys = new ArrayList<String>();
 	  ArrayList<Double> final_vals = new ArrayList<Double>();
 	  ArrayList<Double> final_vars = new ArrayList<Double>();
 	  ArrayList<Double> reducer_time = new ArrayList<Double>(); // Two items only: startTime, timeCost
@@ -144,6 +145,7 @@ public class Reducer<KEYIN,VALUEIN,KEYOUT,VALUEOUT> {
     public void write(KEYOUT key, VALUEOUT value, double var
     		) throws IOException, InterruptedException {
     	super.write(key, value);
+    	final_keys.add(key.toString());
     	final_vals.add(Double.parseDouble(value.toString()));
     	final_vars.add(var);
     	Log.info("reduce value = " + value.toString());
@@ -154,6 +156,13 @@ public class Reducer<KEYIN,VALUEIN,KEYOUT,VALUEOUT> {
     	reducer_time.add((double) timecost);
     }
     
+    public ArrayList<String> getKeys() {
+    	Log.info("getKeys: " + final_keys.size());
+    	if (final_keys.size() == 0) {
+    		return null;
+    	}
+    	return final_keys;
+    }
     public ArrayList<ArrayList<Double>> getValueVar() {
     	Log.info("getValueVar: " + final_vals.size());
     	if (final_vals.size() == 0) {

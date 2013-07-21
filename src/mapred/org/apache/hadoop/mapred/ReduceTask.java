@@ -650,11 +650,15 @@ class ReduceTask extends Task {
                                                trackedRW, committer,
                                                reporter, comparator, keyClass,
                                                valueClass);
+    LOG.info("Running runNewReducer.");
     reducer.run(reducerContext);
+    ArrayList<String> results_keys = reducerContext.getKeys();
     ArrayList<ArrayList<Double>> results = reducerContext.getValueVar();
-    if (results != null) {
-    	LOG.info("runNewReducer: results=" + results.size());
-    	sendReduceResultToJob(results);
+    if (results_keys != null && results != null) {
+    	LOG.info("runNewReducer: results Size=" + results.size());
+    	sendReduceResultToJob(results_keys, results);
+    } else {
+    	LOG.warn("No results are available!");
     }
     trackedRW.close(reducerContext);
   }
@@ -2937,8 +2941,8 @@ class ReduceTask extends Task {
       (((hob >>> 1) & value) == 0 ? 0 : 1);
   }
   
-  private void sendReduceResultToJob(ArrayList<ArrayList<Double>> results){
-	  if (results.size() < 3) {
+  private void sendReduceResultToJob(ArrayList<String> keys, ArrayList<ArrayList<Double>> results){
+	  if (results.size() < 3 || keys.size() == 0) {
 		  LOG.warn("Invalid Reduce result format!");
 		  return;
 	  }
@@ -2961,13 +2965,17 @@ class ReduceTask extends Task {
 			dataSkt = new Socket(ia, serverPort);
 			output = new DataOutputStream(dataSkt.getOutputStream());
 			output.writeBytes(1 + "\n"); // Write data type first.
-			output.writeBytes(results.get(0).size() + "\n");
-			for (int i=0; i<results.get(0).size(); i++) {
-				String content = "0" + ";" + results.get(0).get(i) + ";" + results.get(1).get(i);
+			output.writeBytes(keys.size() + "\n");
+			for (int i=0; i<keys.size(); i++) {
+				String content = "0" + ";" + keys.get(i) + ";" + results.get(0).get(i) + ";" + results.get(1).get(i);
 				output.writeBytes(content + "\n");
 			}
-			String content = "1" + ";" + results.get(2).get(0) + ";" + results.get(2).get(1);
-			output.writeBytes(content + "\n");
+			if (results.get(2).size() == 2){
+				String content = "1" + ";" + results.get(2).get(0) + ";" + results.get(2).get(1);
+				output.writeBytes(content + "\n");
+			} else {
+				LOG.warn("Invalid Reduce result format - (reducer_time)!");
+			}
 			break;
 		  } catch (UnknownHostException e) {
 			e.printStackTrace();

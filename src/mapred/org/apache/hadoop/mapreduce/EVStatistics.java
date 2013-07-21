@@ -123,6 +123,7 @@ public class EVStatistics {
 
 	public void addTimeStat(StatsType type, long time) {
 		timeProfile.put(type, time);
+		Log.info("addStat: " + time);
 	}
 	
 	public void addTimeStat(String typeStr, String timeStr) {

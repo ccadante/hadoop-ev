@@ -14,6 +14,7 @@ import org.apache.hadoop.filecache.DistributedCache;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.BytesWritable;
+import org.apache.hadoop.io.DoubleWritable;
 import org.apache.hadoop.io.IntWritable;
 import org.apache.hadoop.io.LongWritable;
 import org.apache.hadoop.io.SequenceFile;
@@ -26,7 +27,7 @@ import org.apache.hadoop.mapreduce.lib.input.CombineSampleInputFormat;
 import org.apache.hadoop.mapreduce.lib.input.SampleInputUtil;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 import org.apache.hadoop.util.GenericOptionsParser;
-import org.mortbay.log.Log;
+//import org.mortbay.log.Log;
 import org.opencv.core.Core;
 import org.opencv.core.Mat;
 import org.opencv.core.MatOfRect;
@@ -153,9 +154,13 @@ public class CombineSampleOfflineMR {
 			long startTime = System.currentTimeMillis();
 			int VC = CountVehicle(value);
 			long usedTime = System.currentTimeMillis() -startTime;
+			String folder = key.toString();
+			folder = folder.substring(0, folder.lastIndexOf("/"));
+			System.out.println("key: " + key);
+			System.out.println("folder: " + folder);
 			System.out.println("number: " + VC);
 			System.out.println("total: " + usedTime);
-			context.write(key, new IntWritable(VC));
+			context.write(new Text(folder), new IntWritable(VC));
 		}
 		
 		public int CountVehicle(BytesWritable value) throws IOException
@@ -207,18 +212,40 @@ public class CombineSampleOfflineMR {
 	    }
 	}
 	
-	public static class CarAggrReducer extends Reducer<Text, IntWritable, Text, IntWritable>{
-		private IntWritable result = new IntWritable();
+	public static class CarAggrReducer extends Reducer<Text, IntWritable, Text, DoubleWritable>{
+		private DoubleWritable result = new DoubleWritable();
 		
 		public void reduce(Text key, Iterable<IntWritable> values, Context context) throws IOException, InterruptedException
 		{
-			int sum = 0;
+			/*int sum = 0;
 			for(IntWritable val:values)
 			{
 				sum += val.get();
 			}
 			result.set(sum);
-			context.write(key, result);
+			context.write(key, result);*/
+			
+			int sum = 0;
+			int count = 0;
+			double var = 0.0;
+			double avg = 0.0;
+			ArrayList<Integer> valList = new ArrayList<Integer>();
+			for(IntWritable val:values)
+			{
+				sum += val.get();
+				valList.add(val.get());
+				count++;
+			}
+			avg = sum / (double) count;
+			for(Integer val: valList)
+			{
+				var += Math.pow(val - avg, 2);
+			}
+			var = var / (double) count;
+			//result.set(sum);
+			result.set(avg);
+			System.out.println("mean=" + result.toString() + " variance=" + var);
+			context.write(key, result, var);
 		}
 	}
 }

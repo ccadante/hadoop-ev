@@ -79,7 +79,7 @@ public class Job extends JobContext {
   private static EVStatsServer evStatsServer;
 
   //A integer indicating the number of DataProcesses in EVStatsServer
-  public int dpInProc = 0;
+  //public int dpInProc = 0;
   
   public Job() throws IOException {
     this(new Configuration());
@@ -747,7 +747,7 @@ public class Job extends JobContext {
 	  else
 		  LOG.info("Before deadline: " + Math.abs(timeDiff) + "ms");
 	  
-	  while (dpInProc > 0) {}
+	  //while (dpInProc > 0) {}
 	  return true;
 	  
   }
@@ -1007,11 +1007,13 @@ public class Job extends JobContext {
   
   // Get the folder name from a full path name, which is the deepest directory name.
   private String GetFolderFromFullPath(String path) {
+	  if (!path.contains("/"))
+		  return path;
 	  String folder = null;
 	  try {
 		  folder = path;
 		  folder = folder.substring(0, folder.lastIndexOf("/"));
-		  folder = folder.substring(folder.lastIndexOf("/")+1);
+		  folder = folder.substring(folder.lastIndexOf("/")+1);		
 	  } catch (Exception ex) {
 		  LOG.error("GetFolderFromFullPath:" + ex.getMessage());
 	  }
@@ -1056,7 +1058,8 @@ public class Job extends JobContext {
   // The size of evStatsSet should equal number of Map tasks.
   Set<EVStatistics> evStatsSet = new HashSet<EVStatistics>();
   EVStatistics evStats = new EVStatistics();
-  ArrayList<ArrayList<Double>> reduceResults = new ArrayList<ArrayList<Double>>(); 
+  // format <loc, {{reduce_avgVal,...}, {reduce_var,...}}>
+  Map<String, ArrayList<ArrayList<Double>>> reduceResults = new HashMap<String, ArrayList<ArrayList<Double>>>(); 
   ArrayList<ArrayList<Double>> reducerTimes = new ArrayList<ArrayList<Double>>(); 
   ArrayList<ArrayList<Double>> mapperTimes = new ArrayList<ArrayList<Double>>(); 
   Random rand = new Random(); // It is better to share a global Random class.
@@ -1070,24 +1073,31 @@ public class Job extends JobContext {
 		  LOG.warn("Got a null/empty stat.");
 		  return;
 	  }
-	  synchronized (Job.this){
+	  synchronized (evStatsSet){
 		  evStatsSet.add(evStat);
 		  //LOG.warn("addEVStats set size = " + evStatsSet.size());
 	  }
   }
   
+  public void clearEVStats() {
+	  LOG.info("Clear all EVStats!");
+	  evStatsSet.clear();
+	  evStats.clear();
+	  reduceResults.clear();
+	  reducerTimes.clear();
+	  mapperTimes.clear();
+  }
   /**
    * Process current set of EVStats to get the time-cost distribution across different domain. 
    * Currently, we aggregate data for each folder (i.e, camera location).
    * @return Map<String, Double>, e.g., <"16m_1", 0.90>, <"16m_1", 0.099>
    */
-  public Map<String, Stats> processEVStats(){
-	  
+  public Map<String, Stats> processEVStats(){	  
 	  long actualSize = 0;
 	  Map<String, Stats> tmp_stat = new HashMap<String, Stats>();
 	  Map<String, Stats> final_stat = new HashMap<String, Stats>();
 	  
-	  // Compute average.
+	  // Compute time average.
       for (EVStatistics evstat : evStatsSet) {
     	  actualSize += evstat.getSize();
     	  for (StatsType type : evstat.timeProfile.keySet()) {
@@ -1101,7 +1111,7 @@ public class Job extends JobContext {
       for (String key : tmp_stat.keySet()) {
     	  tmp_stat.get(key).computeAvg();
       }        
-      // Compute variance.
+      // Compute time variance.
       for (EVStatistics evstat : evStatsSet) {
     	  for (StatsType type : evstat.timeProfile.keySet()) {
     		  String loc = GetFolderFromFullPath(type.value);
@@ -1113,7 +1123,7 @@ public class Job extends JobContext {
       }
       
       // NOTE: we want to remove outlier data!
-      // Compute average.
+      // Compute time average.
       long avgTime = 0;
 	  long totalSize = 0;
       for (EVStatistics evstat : evStatsSet) {
@@ -1134,7 +1144,7 @@ public class Job extends JobContext {
       for (String key : final_stat.keySet()) {
     	  final_stat.get(key).computeAvg();
       }        
-      // Compute variance.
+      /*// Compute time variance.
       for (EVStatistics evstat : evStatsSet) {
     	  for (StatsType type : evstat.timeProfile.keySet()) {
     		  String loc = GetFolderFromFullPath(type.value);
@@ -1142,10 +1152,44 @@ public class Job extends JobContext {
     		  if (Math.abs(val - tmp_stat.get(loc).avg) < 2 * Math.sqrt(tmp_stat.get(loc).var))
     			  final_stat.get(loc).addDiff(val);
     	  }
+      }*/
+      // Process values variance
+      double var_avg = 0.0;
+      double var_avg_count = 0.0;
+      for (String key : reduceResults.keySet()) {
+		  ArrayList<ArrayList<Double>> lists = reduceResults.get(key);		  
+		  ArrayList<Double> var_list = lists.get(1);
+		  double var = 0.0;
+		  for (double v : var_list) {
+			  var += v;
+		  }
+		  if (var_list.size() > 0) {
+			  var = var / (double) var_list.size();
+		  }
+		  var_list.clear();
+		  var_list.add(var);
+		  var_avg += var;
+		  var_avg_count++;
+		  if (final_stat.containsKey(key)) {
+			  final_stat.get(key).var = var;
+		  }
+	  }
+      if (var_avg_count > 0) {
+    	  var_avg = var_avg / (double) var_avg_count;
       }
+      // To avoid 0.0 variance.
+      if (var_avg < 0.0001){
+    	  var_avg = 0.01;
+      }
+      // Set variances of other non-existing keys 
       for (String key : final_stat.keySet()) {
-    	  final_stat.get(key).computeVar();
-    	  LOG.info(key + "\tavg = " + final_stat.get(key).avg + "  var = " + final_stat.get(key).var + " count = " +
+    	  if (final_stat.get(key).var < 0.0001) {
+    		  final_stat.get(key).var = var_avg;
+    	  }
+      }
+      
+      for (String key : final_stat.keySet()) {
+    	  LOG.info(key + "\tavg(Time) = " + final_stat.get(key).avg + "  var(Value) = " + final_stat.get(key).var + " count = " +
     			  final_stat.get(key).count);
       }
       
@@ -1163,7 +1207,7 @@ public class Job extends JobContext {
       if (reducerTimes.size() > 0)
     	  avgReducerTime = avgReducerTime / reducerTimes.size();
       else
-    	  LOG.warn("Invalid reducerTimes (probably also mapperTimes)!");
+    	  LOG.error("Invalid reducerTimes (probably also mapperTimes)!");
       // Do remember to clear mapperTimes and reducerTimes every time!
       mapperTimes.clear();
       reducerTimes.clear();
@@ -1204,29 +1248,71 @@ public class Job extends JobContext {
    * @param final_val
    * @param final_var
    */
-  public void addReduceResults(ArrayList<Double> final_val, ArrayList<Double> final_var) {
-	  reduceResults.add(final_val);
-	  reduceResults.add(final_var);
+  public void addReduceResults(ArrayList<String> final_keys, ArrayList<Double> final_val, ArrayList<Double> final_var) {
+	  synchronized (reduceResults) {
+		  for (int i=0; i<final_keys.size(); i++) {		  
+			  String key = final_keys.get(i);
+			  LOG.info("addReduceResults: " + key + "  val = " + final_val.get(i) + "  var = " + final_var.get(i));
+			  if (!reduceResults.containsKey(key)) {
+				  ArrayList<Double> val_list = new ArrayList<Double>();
+				  val_list.add(final_val.get(i));
+				  ArrayList<Double> var_list = new ArrayList<Double>();
+				  var_list.add(final_var.get(i));
+				  ArrayList<ArrayList<Double>> newList = new ArrayList<ArrayList<Double>>();
+				  newList.add(val_list);
+				  newList.add(var_list);
+				  reduceResults.put(key, newList);
+				  continue;
+			  }
+			  ArrayList<ArrayList<Double>> oldList = reduceResults.get(key);
+			  oldList.get(0).add(final_val.get(i));
+			  oldList.get(1).add(final_var.get(i));
+		  }
+	  }
   }
   
   public void addReduceTime(ArrayList<Double> reducer_time) {
-	  reducerTimes.add(reducer_time);
+	  synchronized (reducerTimes){
+		  reducerTimes.add(reducer_time);
+	  }
   }
   
   public void addMapperTime(ArrayList<Double> mapper_time) {
-	  mapperTimes.add(mapper_time);
+	  synchronized (mapperTimes){
+		  mapperTimes.add(mapper_time);
+	  }
   }
   
   public enum OpType {AVG, COUNT, SUM}
   
   public double[] processReduceResults(long n, long N, OpType op) {
-	  if (op == OpType.SUM && reduceResults.size() > 1) {
+	  if (op == OpType.SUM && reduceResults.size() == 2) {
 		  double final_sum = 0;
 		  double final_var = 0;
-		  for (int i=0; i<reduceResults.get(0).size(); i++) {
-			  final_sum += reduceResults.get(0).get(i);
-			  final_var += reduceResults.get(1).get(i);
+		  for (String key : reduceResults.keySet()) {
+			  ArrayList<ArrayList<Double>> lists = reduceResults.get(key);
+			  ArrayList<Double> val_list = lists.get(0);
+			  double sum = 0.0;
+			  for (double v : val_list) {
+				  sum += v;
+			  }
+			  if (val_list.size() > 0) {
+				  sum = sum / (double) val_list.size();
+			  }
+			  final_sum += sum;
+			  
+			  ArrayList<Double> var_list = lists.get(1);
+			  double var = 0.0;
+			  for (double v : var_list) {
+				  var += v;
+			  }
+			  if (var_list.size() > 0) {
+				  var = var / (double) var_list.size();
+			  }
+			  final_var += var;
 		  }
+		  // Clear reduce results of this round.
+		  reduceResults.clear();
 		  // Normal distribution: 1.65 std err = 90%; 1.96 std err = 95%; 2.58 std err = 99%;
 		  double error = Math.sqrt(final_var) * 1.96; 
 		  // General distribution (Chebyshev's inequality): 
@@ -1234,7 +1320,7 @@ public class Job extends JobContext {
 		  //double error = Math.sqrt(final_var / 0.05); 
 		  return new double[]{final_sum, error};
 	  }
-	  return new double[] {0.0, 0.0};
+	  return new double[] {-1.0, 0.0};
   }
   
   /**

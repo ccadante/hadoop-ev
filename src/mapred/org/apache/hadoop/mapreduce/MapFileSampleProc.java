@@ -108,16 +108,18 @@ public class MapFileSampleProc {
 	
 	public boolean start() throws IOException, InterruptedException, ClassNotFoundException
 	{
-		int runCount = 0;
-		long deadline = System.currentTimeMillis() + timeConstraint * 1000; // in millisecond
-		long timer = System.currentTimeMillis();
-
 		/* start cache job first */
-		CacheJob cachejob = new CacheJob(originjob, filereclist);
-		cachejob.Start();
+		//CacheJob cachejob = new CacheJob(originjob, filereclist);
+		//cachejob.Start();
+		
+		// Clear any pre-existing stats, for example, from Caching setup job.
+		originjob.clearEVStats();
 		
 		/* loop until deadline */
 		List<SamplePath> files = GetWholeFileRecordList();
+		int runCount = 0;
+		long deadline = System.currentTimeMillis() + timeConstraint * 1000; // in millisecond
+		long timer = System.currentTimeMillis();
 		long N = files.size(); // Total input records number.		
 		while(System.currentTimeMillis() < deadline)
 		{		
@@ -213,9 +215,12 @@ public class MapFileSampleProc {
 			FileOutputFormat.setOutputPath(newjob, 
 					new Path(originjob.getConfiguration().get(("mapred.output.dir")) + "_" + runCount));
 			
+			int printC = 0;
 			for (SamplePath sp : inputfiles)
 			{
-				Log.info("$$$$$$$$$$  sample is = " + sp.file_path + "; key = " + sp.sample_key + "; len = " + sp.size);
+				printC++;
+				if (printC <= 20 || (printC % 100 == 0))
+					Log.info("$$$$$$$$$$  sample is = " + sp.file_path + "; key = " + sp.sample_key + "; len = " + sp.size);
 			}
 			/* set input file path */;
 			inputfiles = GetReorderedInput(inputfiles);
@@ -256,20 +261,22 @@ public class MapFileSampleProc {
 	
 	
 	public boolean startWithErrorContraint() throws IOException, InterruptedException, ClassNotFoundException
-	{
-		int runCount = 0;
-		long timer = System.currentTimeMillis();
-		
+	{		
 		/* start cache job first */
 //		CacheJob cachejob = new CacheJob(originjob, filereclist);
 //		cachejob.Start();
 		
+		// Clear any pre-existing stats, for example, from Caching setup job.
+		originjob.clearEVStats();
+				
 		/* loop until deadline */
 		List<SamplePath> files = GetWholeFileRecordList();
 		long N = files.size(); // Total input records size.		
 		double error = Double.MAX_VALUE;
 		double sampleEnlargeScale = 1.0; // The next sample size scale comparing to previous sample size.
 		long preTimeBudget = 0;
+		int runCount = 0;
+		long timer = System.currentTimeMillis();
 		while(error > errorConstraint)
 		{		
 			runCount++;
@@ -526,10 +533,12 @@ public class MapFileSampleProc {
 		{
 			int idx = rand.nextInt(files.size());
 			SamplePath fileRec = files.get(idx);
-			String folder = fileRec.file_path.toString();
+			String folder = fileRec.file_path.toString();	
+			folder = folder.substring(folder.lastIndexOf("/")+1);
 			boolean isChosen = false;
 			if (useMHSampling) { // MH sampling algorithm
-				String cur_variable = folder;
+				//String cur_variable = folder;
+				String cur_variable = folder + ".seq"; // For sequence file format.
 				if (next_variable.equals("") || next_variable.equals(cur_variable)) {
 					res_list.add(fileRec);
 					sampledSize.put(cur_variable, sampledSize.get(cur_variable) + 1);
@@ -633,9 +642,11 @@ public class MapFileSampleProc {
 			  int idx = rand.nextInt(files.size());
 			  SamplePath fileRec = files.get(idx);
 			  String folder = fileRec.file_path.toString();
-			  String cur_variable = folder;
+			  folder = folder.substring(folder.lastIndexOf("/")+1);
+			  //String cur_variable = folder;
+			  String cur_variable = folder + ".seq"; // For sequence file format.
 			  boolean isChosen = false;
-			  if (useMHSampling) { // MH sampling algorithm			  
+			  if (useMHSampling) { // MH sampling algorithm			  					
 				  if (distribution.containsKey(cur_variable) && 
 						  (next_variable.equals("") || next_variable.equals(cur_variable))) {
 					  res_list.add(fileRec);
@@ -709,6 +720,7 @@ public class MapFileSampleProc {
 		for(String k : filereclist.keySet())
 		{
 			String loc = k;
+			loc = loc.substring(loc.lastIndexOf("/") + 1);
 			Stats newStats = originjob.evStats.new Stats();
 			newStats.var = 1.0;
 			sizeProportion.put(loc, newStats); // average among directories.

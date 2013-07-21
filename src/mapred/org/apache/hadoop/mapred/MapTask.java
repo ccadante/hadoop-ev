@@ -773,9 +773,9 @@ class MapTask extends Task {
       if (mapperContext.getConfiguration().getInt("mapred.evstatistic.enable", 1) == 1)
       {
     	  myEVStat = mapperContext.getEVStats();
-    	  sendEVStatsToJob();
     	  LOG.warn("Get EVStatistics with size of " + myEVStat.getSize() + 
-    		  " and one value as " + myEVStat.getFirstStat());
+        		  " and one value as " + myEVStat.getFirstStat());
+    	  sendEVStatsToJob();    	  
       }
       input.close();
       output.close(mapperContext);

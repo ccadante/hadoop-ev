@@ -129,7 +129,7 @@ public class Mapper<KEYIN, VALUEIN, KEYOUT, VALUEOUT> {
     	super.write(key, value);
     	lastKeyIn = super.getCurrentKey();
     	//lastValueIn = super.getCurrentValue();
-    	//lastKeyOut = key;
+    	lastKeyOut = key;
     	lastValueOut = value;
 	}
     
@@ -141,7 +141,7 @@ public class Mapper<KEYIN, VALUEIN, KEYOUT, VALUEOUT> {
     	if(myEVStat == null)
     		myEVStat = new EVStatistics();
     	myEVStat.addTimeStat(myEVStat.new StatsType(
-    		lastKeyIn.getClass().getName(), lastKeyIn.toString()), time);
+    			lastKeyIn.getClass().getName(), lastKeyOut.toString()), time);
     }
     
     /**

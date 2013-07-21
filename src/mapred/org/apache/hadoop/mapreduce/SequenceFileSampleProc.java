@@ -104,16 +104,18 @@ public class SequenceFileSampleProc {
 	
 	public boolean start() throws IOException, InterruptedException, ClassNotFoundException
 	{
-		int runCount = 0;
-		long deadline = System.currentTimeMillis() + timeConstraint * 1000; // in millisecond
-		long timer = System.currentTimeMillis();
-
+		// Clear any pre-existing stats, for example, from Caching setup job.
+		originjob.clearEVStats();
+		
 		/* start cache job first */
 //		CacheJob cachejob = new CacheJob(originjob, keyreclist);
 //		cachejob.Start();
 		
 		/* loop until deadline */
 		List<SequenceFileRecord> files = GetWholeFileRecordList();
+		int runCount = 0;
+		long deadline = System.currentTimeMillis() + timeConstraint * 1000; // in millisecond
+		long timer = System.currentTimeMillis();
 		long N = files.size(); // Total input records size.		
 		while(System.currentTimeMillis() < deadline)
 		{		
@@ -244,6 +246,8 @@ public class SequenceFileSampleProc {
 	
 	public boolean startWithErrorContraint() throws IOException, InterruptedException, ClassNotFoundException
 	{
+		// Clear any pre-existing stats, for example, from Caching setup job.
+		originjob.clearEVStats();
 		int runCount = 0;
 		long timer = System.currentTimeMillis();
 		
