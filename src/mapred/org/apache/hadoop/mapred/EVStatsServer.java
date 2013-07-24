@@ -64,7 +64,7 @@ public class EVStatsServer implements Runnable {
 				ArrayList<Double> final_var = null;
 				ArrayList<Double> reducer_time = null;
 				ArrayList<Double> mapper_time = null;
-				LOG.info("Statistics built, state = " + state + "; data size = " + data_size);
+				//LOG.info("Statistics built, state = " + state + "; data size = " + data_size);
 				if (state == 0) {
 					evStat = new EVStatistics();
 					mapper_time = new ArrayList<Double>();

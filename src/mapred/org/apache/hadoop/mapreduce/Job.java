@@ -675,7 +675,9 @@ public class Job extends JobContext {
 		  Long sample_len = 0L;
 		  
 		  if (runCount == 1) {
-			  sample_len = RandomSampleWithDirs(files, sampleSizePerFolder, inputfiles);			  
+			  sample_len = RandomSampleWithDirs(files, sampleSizePerFolder, inputfiles);
+			  // Do not print EmptyFolders after the first round.
+			  this.getConfiguration().setBoolean("mapred.sample.outputEmptyFolder", false);
 		  } else if (runCount == 2){
 			  distribution = processEVStats();
 			  long avgTime = Long.valueOf(evStats.getAggreStat("time_per_record")); // in millisecond
@@ -1286,7 +1288,9 @@ public class Job extends JobContext {
   public enum OpType {AVG, COUNT, SUM}
   
   public double[] processReduceResults(long n, long N, OpType op) {
-	  if (op == OpType.SUM && reduceResults.size() == 2) {
+	  if (op == OpType.SUM) {
+		  ArrayList<String> emptyKeys = new ArrayList<String>();
+		  ArrayList<String> nonEmptyKeys = new ArrayList<String>();
 		  double final_sum = 0;
 		  double final_var = 0;
 		  for (String key : reduceResults.keySet()) {
@@ -1310,9 +1314,27 @@ public class Job extends JobContext {
 				  var = var / (double) var_list.size();
 			  }
 			  final_var += var;
+			  
+			  if (sum == 0) {
+				  emptyKeys.add(key);
+			  } else {
+				  nonEmptyKeys.add(key);
+			  }
 		  }
 		  // Clear reduce results of this round.
 		  reduceResults.clear();
+		  if (this.getConfiguration().getBoolean("mapred.sample.printEmptyFolder", true)) {
+			  String nonEmptyKeysStr = "";
+			  for (String key : nonEmptyKeys) {
+				  nonEmptyKeysStr += key + "\n";
+			  }
+			  LOG.warn("Folder list with valid computing results:\n" + nonEmptyKeysStr);
+			  String emptyKeysStr = "";
+			  for (String key : emptyKeys) {
+				  emptyKeysStr += key + "\n";
+			  }
+			  LOG.warn("Folder list with ZERO computing results:\n" + emptyKeysStr);
+		  }
 		  // Normal distribution: 1.65 std err = 90%; 1.96 std err = 95%; 2.58 std err = 99%;
 		  double error = Math.sqrt(final_var) * 1.96; 
 		  // General distribution (Chebyshev's inequality): 
