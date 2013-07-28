@@ -88,8 +88,9 @@ public class CombineSampleRecordReader extends RecordReader<Text, BytesWritable>
 		BytesWritable value = new BytesWritable();
 		mfreader.get(new Text(sampleKey), value);
 		
+		if (fileLength < 0 || fileLength > 100000)	return false;
 		currKey.set(sampleKey);
-		currValue.set(value.toString().getBytes(), 0, (int) fileLength);
+		currValue.set(value.getBytes(), 0, (int) value.getLength() );
 		index++;
 		return true;
 	}

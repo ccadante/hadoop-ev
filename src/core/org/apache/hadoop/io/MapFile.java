@@ -618,7 +618,7 @@ public class MapFile {
     String dr = (dryrun ? "[DRY RUN ] " : "");
     Path data = new Path(dir, DATA_FILE_NAME);
     Path index = new Path(dir, INDEX_FILE_NAME);
-    int indexInterval = 128;
+    int indexInterval = 1;
     if (!fs.exists(data)) {
       // there's nothing we can do to fix this!
       throw new Exception(dr + "Missing data file in " + dir + ", impossible to fix this.");
@@ -642,7 +642,7 @@ public class MapFile {
     SequenceFile.Writer indexWriter = null;
     if (!dryrun) indexWriter = SequenceFile.createWriter(fs, conf, index, keyClass, LongWritable.class);
     try {
-      long pos = 0L;
+      long pos = dataReader.getPosition();
       LongWritable position = new LongWritable();
       while(dataReader.next(key, value)) {
         cnt++;

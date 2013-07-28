@@ -1315,7 +1315,7 @@ public class Job extends JobContext {
 			  }
 			  final_var += var;
 			  
-			  if (sum == 0) {
+			  if (sum < 0.001) {
 				  emptyKeys.add(key);
 			  } else {
 				  nonEmptyKeys.add(key);

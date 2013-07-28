@@ -101,9 +101,10 @@ public class MapFileSampleProc {
 		int datanode_num = hdfs.getDataNodeStats().length;
 		int max_mapnum = job.getConfiguration().getInt("mapred.tasktracker.map.tasks.maximum", 2);
 		max_slotnum = datanode_num*max_mapnum;
-		if (max_slotnum <= 0) {
-			LOG.info("Can not read number of slots!  datanode_num=" + datanode_num +
+		LOG.info("Can not read number of slots!  datanode_num=" + datanode_num +
 					  " max_mapnum=" + max_mapnum);
+		max_slotnum = 46;
+		if (max_slotnum <= 0) {
 			return false;
 		}
 		return true;
@@ -484,7 +485,11 @@ public class MapFileSampleProc {
 		{
 			int idx = rand.nextInt(files.size()-1);
 			res_list.add(files.get(idx));
-			sample_len += files.get(idx).size;
+			if (files.get(idx).size>0 || files.get(idx).size >100000)
+				  sample_len += files.get(idx).size;
+			else
+				  LOG.info("^^^^^^^^^^  length err: " + files.get(idx).sample_key + "; " + files.get(idx).size);
+			  
 		}
 		return sample_len;
 	}
@@ -548,7 +553,11 @@ public class MapFileSampleProc {
 				if (next_variable.equals("") || next_variable.equals(cur_variable)) {
 					res_list.add(fileRec);
 					sampledSize.put(cur_variable, sampledSize.get(cur_variable) + 1);
-					sample_len += files.get(idx).size;
+					if (files.get(idx).size>0 || files.get(idx).size >100000)
+						  sample_len += files.get(idx).size;
+					else
+						LOG.info("^^^^^^^^^^  length err: " + files.get(idx).sample_key + "; " + files.get(idx).size);
+					  
 					count--;
 					isChosen = true;
 					// To find the next sample variable.
@@ -572,7 +581,11 @@ public class MapFileSampleProc {
 						sizeProportion.put(key, sizeProportion.get(key) - 1.0); // decrease one from quota
 						res_list.add(fileRec);
 						sampledSize.put(key, sampledSize.get(key) + 1);					  
-						sample_len += files.get(idx).size;
+						if (files.get(idx).size>0 || files.get(idx).size >100000)
+							  sample_len += files.get(idx).size;
+						else
+							LOG.info("^^^^^^^^^^  length err: " + files.get(idx).sample_key + "; " + files.get(idx).size);
+						  
 						count--;
 						isChosen = true;
 						break;
@@ -589,7 +602,11 @@ public class MapFileSampleProc {
 				if (sizeProportion.containsKey(folder)) {
 					sizeProportion.put(folder, sizeProportion.get(folder) - 1.0);
 					res_list.add(fileRec);
-					sample_len += files.get(idx).size;
+					if (files.get(idx).size>0 || files.get(idx).size >100000)
+						 sample_len += files.get(idx).size;
+					else
+						LOG.info("^^^^^^^^^^  length err: " + files.get(idx).sample_key + "; " + files.get(idx).size);
+					  
 					count--;
 					failCount = 0;
 				}
@@ -657,7 +674,10 @@ public class MapFileSampleProc {
 						  (next_variable.equals("") || next_variable.equals(cur_variable))) {
 					  res_list.add(fileRec);
 					  sampledSize.put(cur_variable, sampledSize.get(cur_variable) + 1);	
-					  sample_len += files.get(idx).size;
+					  if (files.get(idx).size>0 || files.get(idx).size >100000)
+						  sample_len += files.get(idx).size;
+					  else
+						  LOG.info("^^^^^^^^^^  length err: " + files.get(idx).sample_key + "; " + files.get(idx).size);
 					  time += distribution.get(cur_variable).avg; // add the time cost for this variable
 					  count--;
 					  isChosen = true;
@@ -679,7 +699,11 @@ public class MapFileSampleProc {
 						  sizeProportion.put(key, sizeProportion.get(key) - 1.0); // decrease one from quota
 						  res_list.add(fileRec);
 						  sampledSize.put(key, sampledSize.get(key) + 1);					  
-						  sample_len += files.get(idx).size;
+						  if (files.get(idx).size>0 || files.get(idx).size >100000)
+							  sample_len += files.get(idx).size;
+						  else
+							  LOG.info("^^^^^^^^^^  length err: " + files.get(idx).sample_key + "; " + files.get(idx).size);
+						  
 						  time += distribution.get(cur_variable).avg; // add the time cost for this variable
 						  count--;
 						  isChosen = true;
@@ -698,7 +722,11 @@ public class MapFileSampleProc {
 					  sizeProportion.put(folder, sizeProportion.get(folder) - 1.0);
 					  res_list.add(fileRec);
 					  sampledSize.put(folder, sampledSize.get(folder) + 1);
-					  sample_len += files.get(idx).size;
+					  if (files.get(idx).size>0 || files.get(idx).size >100000)
+						  sample_len += files.get(idx).size;
+					  else
+						  LOG.info("^^^^^^^^^^  length err: " + files.get(idx).sample_key + "; " + files.get(idx).size);
+					  
 					  time += distribution.get(folder).avg; // add the time cost for this variable
 					  count--;
 					  failCount = 0;
