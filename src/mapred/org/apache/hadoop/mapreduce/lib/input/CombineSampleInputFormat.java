@@ -202,6 +202,8 @@ public class CombineSampleInputFormat extends FileInputFormat<Text, BytesWritabl
 
 	    for (SamplePath sp : paths)
 	    {
+	    	if(sp.size < 0 || sp.size > 100000)
+	    		continue;
 	    	validPaths.add(sp);
 	    	curSplitSize += sp.size;
 	    	if (maxSize != 0 && curSplitSize >= maxSize)
@@ -213,6 +215,7 @@ public class CombineSampleInputFormat extends FileInputFormat<Text, BytesWritabl
 	    }
 	    addCreatedSplit(splits, validPaths);
 	    validPaths.clear();
+	    Log.info("lglglglg split size = " + splits.size());
 	}
 
 	private void addCreatedSplit(List<InputSplit> splitList, ArrayList<SamplePath> validPaths) {

@@ -100,7 +100,7 @@ public class CodecPool {
     Compressor compressor = borrow(compressorPool, codec.getCompressorType());
     if (compressor == null) {
       compressor = codec.createCompressor();
-      LOG.info("Got brand-new compressor");
+      //LOG.info("Got brand-new compressor");
     } else {
       compressor.reinit(conf);
       LOG.debug("Got recycled compressor");
@@ -125,7 +125,7 @@ public class CodecPool {
     Decompressor decompressor = borrow(decompressorPool, codec.getDecompressorType());
     if (decompressor == null) {
       decompressor = codec.createDecompressor();
-      LOG.info("Got brand-new decompressor");
+      //LOG.info("Got brand-new decompressor");
     } else {
       LOG.debug("Got recycled decompressor");
     }

@@ -1254,7 +1254,7 @@ public class Job extends JobContext {
 	  synchronized (reduceResults) {
 		  for (int i=0; i<final_keys.size(); i++) {		  
 			  String key = final_keys.get(i);
-			  LOG.info("addReduceResults: " + key + "  val = " + final_val.get(i) + "  var = " + final_var.get(i));
+			  //LOG.info("addReduceResults: " + key + "  val = " + final_val.get(i) + "  var = " + final_var.get(i));
 			  if (!reduceResults.containsKey(key)) {
 				  ArrayList<Double> val_list = new ArrayList<Double>();
 				  val_list.add(final_val.get(i));
@@ -1323,7 +1323,7 @@ public class Job extends JobContext {
 		  }
 		  // Clear reduce results of this round.
 		  reduceResults.clear();
-		  if (this.getConfiguration().getBoolean("mapred.sample.printEmptyFolder", true)) {
+		  if (this.getConfiguration().getBoolean("mapred.sample.printEmptyFolder", false)) {
 			  String nonEmptyKeysStr = "";
 			  for (String key : nonEmptyKeys) {
 				  nonEmptyKeysStr += key + "\n";
