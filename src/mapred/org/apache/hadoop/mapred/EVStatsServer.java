@@ -117,13 +117,13 @@ public class EVStatsServer implements Runnable {
 //					closeHDFS();
 					//server.jobTracker.addEVStats(evStat);
 					server.job.addMapperTime(mapper_time);
-					LOG.warn("Added EVStat(Map) into Job with size = " + evStat.getSize() +
-							"  and one time = " + evStat.getFirstStat() + "  mapper_time = " + mapper_time + "ms");
+//					LOG.warn("Added EVStat(Map) into Job with size = " + evStat.getSize() +
+//							"  and one time = " + evStat.getFirstStat() + "  mapper_time = " + mapper_time + "ms");
 				} else if (state == 1) {
 					server.job.addReduceResults(final_keys, final_val, final_var);
 					server.job.addReduceTime(reducer_time);
-					LOG.warn("Added ReduceResult into Job with size = " + final_val.size() +
-							" and one value = " + final_val.get(0) + "  reducer_time = " + reducer_time + "ms");
+//					LOG.warn("Added ReduceResult into Job with size = " + final_val.size() +
+//							" and one value = " + final_val.get(0) + "variance = " + final_var.get(0) + "  reducer_time = " + reducer_time + "ms");
 				}
 			}
 			catch (Exception e) {

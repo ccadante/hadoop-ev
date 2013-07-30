@@ -217,7 +217,7 @@ public class Mapper<KEYIN, VALUEIN, KEYOUT, VALUEOUT> {
 	      if (context.getConfiguration().getInt("mapred.evstatistic.enable", 1) == 1)
 	      {
 	    	  context.addStat((t2 - t1)/1000); // in microsecond
-	    	  context.addCache();
+//	    	  context.addCache();
 	      }
 //      }
     }

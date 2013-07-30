@@ -78,6 +78,7 @@ public class Job extends JobContext {
   private int portEVStatsServer; 
   private static EVStatsServer evStatsServer;
 
+  public Map<String, Double> sampledSize = new HashMap<String, Double>();
   //A integer indicating the number of DataProcesses in EVStatsServer
   //public int dpInProc = 0;
   
@@ -740,6 +741,7 @@ public class Job extends JobContext {
 		  newjob.waitForCompletion(true);
 		  
 		  double[] results = processReduceResults(inputfiles.size(), N, OpType.SUM);
+		  
 		  LOG.info("RESULT ESTIMATION: sum(avg(Loc)) = " + results[0] + "+-" + results[1] + 
 				  " (95% confidence).\n");
 	  }
@@ -899,7 +901,7 @@ public class Job extends JobContext {
 		  }
 	  }
 	  for (String key : sampledSize.keySet()) {
-		  LOG.info("RandomSample-final: " + key + " " + sampledSize.get(key));
+		  //LOG.info("RandomSample-final: " + key + " " + sampledSize.get(key));
 	  }
 	  return sample_len;
   }
@@ -1015,7 +1017,8 @@ public class Job extends JobContext {
 	  try {
 		  folder = path;
 		  folder = folder.substring(0, folder.lastIndexOf("/"));
-		  folder = folder.substring(folder.lastIndexOf("/")+1);		
+		  folder = folder.substring(folder.lastIndexOf("/")+1);	
+		  folder = folder + "/1";
 	  } catch (Exception ex) {
 		  LOG.error("GetFolderFromFullPath:" + ex.getMessage());
 	  }
@@ -1172,10 +1175,13 @@ public class Job extends JobContext {
 		  var_list.add(var);
 		  var_avg += var;
 		  var_avg_count++;
+		 // LOG.info("reduceResults.keySet: "+key+"\t"+var);
 		  if (final_stat.containsKey(key)) {
-			  final_stat.get(key).var = var;
+			  final_stat.get(key).var = Math.sqrt(var);
 		  }
 	  }
+      reduceResults.clear();
+      
       if (var_avg_count > 0) {
     	  var_avg = var_avg / (double) var_avg_count;
       }
@@ -1289,6 +1295,7 @@ public class Job extends JobContext {
   
   public double[] processReduceResults(long n, long N, OpType op) {
 	  if (op == OpType.SUM) {
+		  LOG.info("Sample Size: " + n + "\t Total size: " + N);
 		  ArrayList<String> emptyKeys = new ArrayList<String>();
 		  ArrayList<String> nonEmptyKeys = new ArrayList<String>();
 		  double final_sum = 0;
@@ -1303,6 +1310,9 @@ public class Job extends JobContext {
 			  if (val_list.size() > 0) {
 				  sum = sum / (double) val_list.size();
 			  }
+			  val_list.clear();
+			  val_list.add(sum);
+			  
 			  final_sum += sum;
 			  
 			  ArrayList<Double> var_list = lists.get(1);
@@ -1313,7 +1323,17 @@ public class Job extends JobContext {
 			  if (var_list.size() > 0) {
 				  var = var / (double) var_list.size();
 			  }
+			  var_list.clear();
+			  var_list.add(var);
+			  LOG.info("$###############  key = " + key + "; var = " + var);
+			  if (sampledSize.containsKey(key))
+			  {
+				  var = var/sampledSize.get(key);
+				  LOG.info("$###########sampledSize####  key = " + key + "; var = " + var);
+			  }
 			  final_var += var;
+			  
+			  //LOG.info("processReduceResults.reduce result.keySet: "+key+"\t"+var);
 			  
 			  if (sum < 0.001) {
 				  emptyKeys.add(key);
@@ -1322,7 +1342,7 @@ public class Job extends JobContext {
 			  }
 		  }
 		  // Clear reduce results of this round.
-		  reduceResults.clear();
+		  //reduceResults.clear();
 		  if (this.getConfiguration().getBoolean("mapred.sample.printEmptyFolder", false)) {
 			  String nonEmptyKeysStr = "";
 			  for (String key : nonEmptyKeys) {
