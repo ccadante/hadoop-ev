@@ -62,16 +62,16 @@ public class ImageCarCountMapper extends Mapper<Text, BytesWritable, Text, IntWr
 		catch(InterruptedException e2) {} 
 		*/
 		System.loadLibrary(Core.NATIVE_LIBRARY_NAME);
-		System.out.println("host: " + InetAddress.getLocalHost().getHostName());
+		//System.out.println("host: " + InetAddress.getLocalHost().getHostName());
 		long startTime = System.currentTimeMillis();
 		int VC = CountVehicle(value);
 		long usedTime = System.currentTimeMillis() -startTime;
-		System.out.println("number: " + VC);
-		System.out.println("total: " + usedTime);
+		//System.out.println("number: " + VC);
+		//System.out.println("total: " + usedTime);
 		String folder = key.toString();
 		folder = folder.substring(0, folder.lastIndexOf("/"));
 		context.write(new Text(folder), new IntWritable(VC));
-		System.out.println("key = " + key + "   time = " + usedTime);
+		System.out.println(key + " " + usedTime + " " + VC);
 	}
 	
 	public int CountVehicle(BytesWritable value) throws IOException
@@ -86,15 +86,15 @@ public class ImageCarCountMapper extends Mapper<Text, BytesWritable, Text, IntWr
 		{
 			BigByteArray[i] = new Byte(filecontent[i]);
 		}
-		System.out.println("size: " + filecontent.length);
+		//System.out.println("size: " + filecontent.length);
 		List<Byte> matlist = Arrays.asList(BigByteArray);
 		long s = System.currentTimeMillis();
 		img = Converters.vector_char_to_Mat(matlist);
-		System.out.println("vec2mat: " + (System.currentTimeMillis()-s));
+		//System.out.println("vec2mat: " + (System.currentTimeMillis()-s));
 		
 		s = System.currentTimeMillis();
 		img = Highgui.imdecode(img, Highgui.CV_LOAD_IMAGE_COLOR);
-		System.out.println("imdec: " + (System.currentTimeMillis()-s));
+		//System.out.println("imdec: " + (System.currentTimeMillis()-s));
 
 		int vehicleCount = 0;
 		int frameCount = 0;
@@ -107,15 +107,15 @@ public class ImageCarCountMapper extends Mapper<Text, BytesWritable, Text, IntWr
 			MatOfRect cars = new MatOfRect();
 			s = System.currentTimeMillis();
 			Imgproc.cvtColor( img, frame_gray, Imgproc.COLOR_BGR2GRAY );
-			System.out.println("cvtclr: " + (System.currentTimeMillis()-s));
+			//System.out.println("cvtclr: " + (System.currentTimeMillis()-s));
 
 			s = System.currentTimeMillis();
 			Imgproc.equalizeHist( frame_gray, frame_gray );
-			System.out.println("eqlhist: " + (System.currentTimeMillis()-s));
+			//System.out.println("eqlhist: " + (System.currentTimeMillis()-s));
 
 			s = System.currentTimeMillis();
 			car_cascade.detectMultiScale( frame_gray, cars, 1.1, 2, 0, new Size(40, 40), new Size(800, 800) );
-			System.out.println("detect: " + (System.currentTimeMillis()-s));
+			//System.out.println("detect: " + (System.currentTimeMillis()-s));
 			vehicleCount = vehicleCount + cars.height();
 			
 //			Rect[] car_arr = cars.toArray();

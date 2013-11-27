@@ -9,6 +9,7 @@ import org.apache.hadoop.io.*;
 import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
 import org.apache.hadoop.mapreduce.lib.input.SequenceFileInputFilter;
+import org.apache.hadoop.mapreduce.lib.input.SequenceFileInputFormat;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 import org.apache.hadoop.util.GenericOptionsParser;
 
@@ -35,8 +36,9 @@ public class CombineOfflineMR{
 		job.setReducerClass(CarAggrReducer.class);
 		job.setOutputKeyClass(Text.class);
 		job.setOutputValueClass(IntWritable.class);
-		job.setInputFormatClass(SequenceFileInputFilter.class);
-		SequenceFileInputFilter.setFilterClass(job, SequenceFileInputFilter.ListFilter.class);
+		job.setInputFormatClass(SequenceFileInputFormat.class);
+		//job.setInputFormatClass(SequenceFileInputFilter.class);
+		//SequenceFileInputFilter.setFilterClass(job, SequenceFileInputFilter.ListFilter.class);
 		
 		String[] inputs = otherArgs[0].split(",");
 		FileOutputFormat.setOutputPath(job, new Path(otherArgs[1]));
@@ -46,8 +48,8 @@ public class CombineOfflineMR{
 		}
 //		FileInputFormat.addInputPath(job, new Path(otherArgs[0]));
 		
-//		System.exit(job.waitForCompletion(true) ? 0 : 1);
-		System.exit(job.waitForSampleCompletion() ? 0 : 1);
+		System.exit(job.waitForCompletion(true) ? 0 : 1);
+		//System.exit(job.waitForSampleCompletion() ? 0 : 1);
 	}
 	
 }

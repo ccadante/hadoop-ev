@@ -27,11 +27,14 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapreduce.EVStatistics.CacheItem;
-import org.mortbay.log.Log;
 
 public class EVStatistics {
+	private static final Log LOG = LogFactory.getLog(EVStatistics.class);
+	
 	public Map<StatsType, Long> timeProfile = new HashMap<StatsType, Long>();
 	public Map<String, String> aggreStats = new HashMap<String, String>();
 	ArrayList<Double> time_record = new ArrayList<Double>(); // Two items only: startTime, timeCost
@@ -123,7 +126,7 @@ public class EVStatistics {
 
 	public void addTimeStat(StatsType type, long time) {
 		timeProfile.put(type, time);
-		Log.info("addStat: " + time);
+		LOG.info("addStat: " + time);
 	}
 	
 	public void addTimeStat(String typeStr, String timeStr) {
@@ -178,12 +181,12 @@ public class EVStatistics {
 		output.writeBytes(getSize() + "\n");
 		for (StatsType key : timeProfile.keySet()) {
 			String content = "0" + ";" + key.toString() + ";" + timeProfile.get(key);
-			Log.info("statistic content: " + content);
+			LOG.info("statistic content: " + content);
 			output.writeBytes(content + "\n");
 		}	
 		for (CacheItem ci : cacheList)	{
 			String content = "1" + ";" + ci.key + ";" + ci.value;
-			Log.info("cache content: " + content);
+			LOG.info("cache content: " + content);
 			output.writeBytes(content + "\n");
 		}
 		if (time_record.size() == 2) {

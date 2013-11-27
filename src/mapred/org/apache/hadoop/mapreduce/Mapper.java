@@ -220,13 +220,14 @@ public class Mapper<KEYIN, VALUEIN, KEYOUT, VALUEOUT> {
 //	    	  context.addCache();
 	      }
 //      }
-    }
+    }    
     cleanup(context);
     long t3 = System.currentTimeMillis();
     if (context.getConfiguration().getInt("mapred.evstatistic.enable", 1) == 1)
     {
     	context.addTimeCost(t0, t3 - t0); // In milliseconds
     }
+    LOG.info("MaReV-LOG-MapTime " + (t3 - t0) + " ms");
   }
   
   /**

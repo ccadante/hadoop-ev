@@ -21,10 +21,11 @@ package org.apache.hadoop.mapreduce;
 import java.io.IOException;
 import java.util.ArrayList;
 
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.io.RawComparator;
 import org.apache.hadoop.mapred.RawKeyValueIterator;
-import org.mortbay.log.Log;
 
 /** 
  * Reduces a set of intermediate values which share a key to a smaller set of
@@ -118,6 +119,7 @@ import org.mortbay.log.Log;
  * @see Partitioner
  */
 public class Reducer<KEYIN,VALUEIN,KEYOUT,VALUEOUT> {
+	private static final Log LOG = LogFactory.getLog(Reducer.class);
 
   public class Context 
     extends ReduceContext<KEYIN,VALUEIN,KEYOUT,VALUEOUT> {
@@ -148,7 +150,7 @@ public class Reducer<KEYIN,VALUEIN,KEYOUT,VALUEOUT> {
     	final_keys.add(key.toString());
     	final_vals.add(Double.parseDouble(value.toString()));
     	final_vars.add(var);
-    	Log.info("reduce value = " + value.toString());
+    	LOG.info("reduce value = " + value.toString());
 	}
     
     public void addTimeCost(long startTime, long timecost) {
@@ -157,14 +159,14 @@ public class Reducer<KEYIN,VALUEIN,KEYOUT,VALUEOUT> {
     }
     
     public ArrayList<String> getKeys() {
-    	Log.info("getKeys: " + final_keys.size());
+    	LOG.info("getKeys: " + final_keys.size());
     	if (final_keys.size() == 0) {
     		return null;
     	}
     	return final_keys;
     }
     public ArrayList<ArrayList<Double>> getValueVar() {
-    	Log.info("getValueVar: " + final_vals.size());
+    	LOG.info("getValueVar: " + final_vals.size());
     	if (final_vals.size() == 0) {
     		return null;
     	}
@@ -214,7 +216,7 @@ public class Reducer<KEYIN,VALUEIN,KEYOUT,VALUEOUT> {
 	  long t1 = System.currentTimeMillis();
     setup(context);
     while (context.nextKey()) {
-      Log.info("reducer running: " + context.getCurrentKey().toString());
+    	LOG.info("reducer running: " + context.getCurrentKey().toString());
       reduce(context.getCurrentKey(), context.getValues(), context);
     }
     cleanup(context);
