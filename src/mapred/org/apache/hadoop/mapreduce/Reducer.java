@@ -216,7 +216,7 @@ public class Reducer<KEYIN,VALUEIN,KEYOUT,VALUEOUT> {
 	  long t1 = System.currentTimeMillis();
     setup(context);
     while (context.nextKey()) {
-    	LOG.info("reducer running: " + context.getCurrentKey().toString());
+    	//LOG.info("reducer running: " + context.getCurrentKey().toString());
       reduce(context.getCurrentKey(), context.getValues(), context);
     }
     cleanup(context);

@@ -57,7 +57,7 @@ public class CombineSampleOfflineMR {
 		Configuration conf = new Configuration();
 		conf.set("mapreduce.input.fileinputformat.split.maxsize", "67108864");
 		DistributedCache.createSymlink(conf);
-		DistributedCache.addCacheFile(new URI("hdfs://localhost:9000/libraries/libopencv_java244.so#libopencv_java244.so"), conf);
+		DistributedCache.addCacheFile(new URI(conf.get("fs.default.name") + "/libraries/libopencv_java244.so#libopencv_java244.so"), conf);
 		
 		String[] otherArgs = new GenericOptionsParser(conf, args).getRemainingArgs();
 		if (otherArgs.length != 2)

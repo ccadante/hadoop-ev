@@ -81,7 +81,7 @@ public class EVStatsServer implements Runnable {
 					if (state == 0) { // EVStat data and Cache data
 						String[] contents = stat_piece.split(";");
 						if (contents.length != 3) {
-							LOG.warn("Invalid EVStat format.");
+							LOG.warn("Invalid EVStat format: " + stat_piece);
 							continue;
 						}
 						if (Integer.parseInt(contents[0]) == 0)	// EVStat data

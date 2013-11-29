@@ -126,7 +126,7 @@ public class EVStatistics {
 
 	public void addTimeStat(StatsType type, long time) {
 		timeProfile.put(type, time);
-		LOG.info("addStat: " + time);
+		//LOG.info("addStat: " + time);
 	}
 	
 	public void addTimeStat(String typeStr, String timeStr) {
@@ -181,12 +181,12 @@ public class EVStatistics {
 		output.writeBytes(getSize() + "\n");
 		for (StatsType key : timeProfile.keySet()) {
 			String content = "0" + ";" + key.toString() + ";" + timeProfile.get(key);
-			LOG.info("statistic content: " + content);
+			//LOG.info("statistic content: " + content);
 			output.writeBytes(content + "\n");
 		}	
 		for (CacheItem ci : cacheList)	{
 			String content = "1" + ";" + ci.key + ";" + ci.value;
-			LOG.info("cache content: " + content);
+			//LOG.info("cache content: " + content);
 			output.writeBytes(content + "\n");
 		}
 		if (time_record.size() == 2) {

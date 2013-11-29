@@ -1,6 +1,7 @@
 #bin/sh
 
 bin/hadoop fs -copyFromLocal ~/Projects/opencv-2.4.4/release/bin/libopencv_java244.so hdfs://localhost:9000/libraries/libopencv_java244.so
+#bin/hadoop fs -copyFromLocal ~/Projects/opencv-2.4.4/build/bin/libopencv_java244.so hdfs://temp-server:9000/libraries/libopencv_java244.so
 echo "Copy libopencv_java244.so -- done"
 
 bin/hadoop fs -mkdir imgsamples
