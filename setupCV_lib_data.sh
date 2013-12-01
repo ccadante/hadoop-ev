@@ -18,3 +18,7 @@ echo "Copy image samples --- done"
 
 ## for local test with Hadoop 1.0.4 for Text-Visual data comparison
 #bin/hadoop jar /home/xinfengli/Projects/hadoop-ev/CombineOfflineMR/offline.jar myorg.offline.CombineOfflineMR -libjars /home/xinfengli/Projects/hadoop-ev/CombineOfflineMR/opencv-244.jar -files /home/xinfengli/Projects/hadoop-ev/CombineOfflineMR/cars3.xml imgsamples/ output1
+
+
+# Bad camera data: CCTV058a_L
+

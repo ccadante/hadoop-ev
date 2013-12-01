@@ -1362,7 +1362,8 @@ public class JobClient extends Configured implements MRConstants, Tool  {
       LOG.info(ie.getMessage());
     }
     if (counters != null) {
-      counters.log(LOG);
+    	if (conf.getBoolean("log.counters.enable", true))
+    		counters.log(LOG);
     }
     return job.isSuccessful();
   }

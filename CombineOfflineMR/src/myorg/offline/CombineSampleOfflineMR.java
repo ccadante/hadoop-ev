@@ -76,70 +76,7 @@ public class CombineSampleOfflineMR {
 		
 		FileInputFormat.setInputPaths(job, new Path(otherArgs[0]));
 		FileOutputFormat.setOutputPath(job, new Path(otherArgs[1]));
-//		FileInputFormat.addInputPath(job, new Path(otherArgs[0]));
-//		InputFormat<?, ?> input = ReflectionUtils.newInstance(job.getInputFormatClass(), conf);
-//		List<FileStatus> files = ((FileInputFormat)input).getListStatus(job);
-/*
-	    FileSystem fs = FileSystem.get(conf);
-	    String samp_input_str = "";
-		for(String file : inputs)
-		{
-			SequenceFile.Reader idxreader = new SequenceFile.Reader(fs, new Path(file, "index"), conf);
-			/*
-			String key = "cam1picfull_L.seq/1372953750366";
-		    BytesWritab le value = new BytesWritable();
-			mfreader.get(new Text(key), value);
-			samp_input_str = samp_input_str + 
-					file + ":" + key + ":" + ((BytesWritable)value).getLength() + ",";
-			key = "cam1picfull_L.seq/1372953754727";
-			mfreader.get(new Text(key), value);
-			samp_input_str = samp_input_str + 
-					file + ":" + key + ":" + ((BytesWritable)value).getLength() + ",";
-			Log.info("$%%%%%%%%%%%%%% samp = " + samp_input_str);
-			*/
-/*			Text key = new Text();
-		    LongWritable position = new LongWritable();
-		    ArrayList<String> keylist = new ArrayList<String>();
-		    ArrayList<Long> poslist = new ArrayList<Long>();
-		    while(idxreader.next(key, position))
-		    {
-		    	keylist.add(key.toString());
-		    	poslist.add(position.get());
-		    }
-		    
-			String[] keyarr = keylist.toArray(new String[keylist.size()]);
-			Long[] posarr = poslist.toArray(new Long[poslist.size()]);
-			String[] inputarr = new String[keylist.size()];
-			
-			String k;
-			Long pos1 = poslist.get(0);
-			Long pos2;
-			long length;
-			for (int i=0; i<keyarr.length-1; i++)
-			{
-				k = keyarr[i];
-				pos2 = posarr[i+1];
-				length = pos2-pos1;
-				pos1 = pos2;
-				inputarr[i] = file + ":" + k + ":" + length;
-//				samp_input_str = samp_input_str + file + ":" + k + ":" + length + ",";
-				if(i%1000==0)
-					Log.info("$%%%%%%%%%%%%%% key = " + k + "; length = " + length + "; count = " + i);
-			}
-			k = keyarr[keyarr.length-1];
-			pos2 = fs.getFileStatus(new Path(file, "data")).getLen();
-			length = pos2-pos1;
-			inputarr[keyarr.length-1] = file + ":" + k + ":" + length;
-//			samp_input_str = samp_input_str + file + ":" + k + ":" + length + ",";
-			Log.info("$%%%%%%%%%%%%%% key = " + k + "; length = " + length + "; count = " + keylist.size());
-			
-			samp_input_str = StringUtils.join(inputarr, ",");
-		}
-		
-		job.getConfiguration().set(SampleInputUtil.SAMP_DIR, samp_input_str);
-		*/
-		System.exit(job.waitForCompletion(true) ? 0 : 1);
-//		System.exit(job.waitForSampleCompletion() ? 0 : 1);
+		System.exit(job.waitForSampleCompletion() ? 0 : 1);
 
 	}
 	
@@ -156,12 +93,9 @@ public class CombineSampleOfflineMR {
 			int VC = CountVehicle(value);
 			long usedTime = System.currentTimeMillis() -startTime;
 			String folder = key.toString();
-			folder = folder.substring(0, folder.lastIndexOf("/"));
-			System.out.println("key: " + key);
-			System.out.println("folder: " + folder);
-			System.out.println("number: " + VC);
-			System.out.println("total: " + usedTime);
+			folder = folder.substring(0, folder.lastIndexOf("/"));			
 			context.write(new Text(folder), new IntWritable(VC));
+			System.out.println(key + " " + usedTime + " " + VC);
 		}
 		
 		public int CountVehicle(BytesWritable value) throws IOException
@@ -180,11 +114,11 @@ public class CombineSampleOfflineMR {
 			List<Byte> matlist = Arrays.asList(BigByteArray);
 			long s = System.currentTimeMillis();
 			img = Converters.vector_char_to_Mat(matlist);
-			System.out.println("vec2mat: " + (System.currentTimeMillis()-s));
+			//System.out.println("vec2mat: " + (System.currentTimeMillis()-s));
 			
 			s = System.currentTimeMillis();
 			img = Highgui.imdecode(img, Highgui.CV_LOAD_IMAGE_COLOR);
-			System.out.println("imdec: " + (System.currentTimeMillis()-s));
+			//System.out.println("imdec: " + (System.currentTimeMillis()-s));
 
 			int vehicleCount = 0;
 			int frameCount = 0;
@@ -197,15 +131,15 @@ public class CombineSampleOfflineMR {
 				MatOfRect cars = new MatOfRect();
 				s = System.currentTimeMillis();
 				Imgproc.cvtColor( img, frame_gray, Imgproc.COLOR_BGR2GRAY );
-				System.out.println("cvtclr: " + (System.currentTimeMillis()-s));
+				//System.out.println("cvtclr: " + (System.currentTimeMillis()-s));
 
 				s = System.currentTimeMillis();
 				Imgproc.equalizeHist( frame_gray, frame_gray );
-				System.out.println("eqlhist: " + (System.currentTimeMillis()-s));
+				//System.out.println("eqlhist: " + (System.currentTimeMillis()-s));
 
 				s = System.currentTimeMillis();
 				car_cascade.detectMultiScale( frame_gray, cars, 1.1, 2, 0, new Size(10, 10), new Size(800, 800) );
-				System.out.println("detect: " + (System.currentTimeMillis()-s));
+				//System.out.println("detect: " + (System.currentTimeMillis()-s));
 				vehicleCount = vehicleCount + cars.height();
 				
 			}
@@ -251,5 +185,70 @@ public class CombineSampleOfflineMR {
 			context.write(key, result, var);
 		}
 	}
+	
+
+//	FileInputFormat.addInputPath(job, new Path(otherArgs[0]));
+//	InputFormat<?, ?> input = ReflectionUtils.newInstance(job.getInputFormatClass(), conf);
+//	List<FileStatus> files = ((FileInputFormat)input).getListStatus(job);
+/*
+    FileSystem fs = FileSystem.get(conf);
+    String samp_input_str = "";
+	for(String file : inputs)
+	{
+		SequenceFile.Reader idxreader = new SequenceFile.Reader(fs, new Path(file, "index"), conf);
+		/*
+		String key = "cam1picfull_L.seq/1372953750366";
+	    BytesWritab le value = new BytesWritable();
+		mfreader.get(new Text(key), value);
+		samp_input_str = samp_input_str + 
+				file + ":" + key + ":" + ((BytesWritable)value).getLength() + ",";
+		key = "cam1picfull_L.seq/1372953754727";
+		mfreader.get(new Text(key), value);
+		samp_input_str = samp_input_str + 
+				file + ":" + key + ":" + ((BytesWritable)value).getLength() + ",";
+		Log.info("$%%%%%%%%%%%%%% samp = " + samp_input_str);
+		*/
+/*			Text key = new Text();
+	    LongWritable position = new LongWritable();
+	    ArrayList<String> keylist = new ArrayList<String>();
+	    ArrayList<Long> poslist = new ArrayList<Long>();
+	    while(idxreader.next(key, position))
+	    {
+	    	keylist.add(key.toString());
+	    	poslist.add(position.get());
+	    }
+	    
+		String[] keyarr = keylist.toArray(new String[keylist.size()]);
+		Long[] posarr = poslist.toArray(new Long[poslist.size()]);
+		String[] inputarr = new String[keylist.size()];
+		
+		String k;
+		Long pos1 = poslist.get(0);
+		Long pos2;
+		long length;
+		for (int i=0; i<keyarr.length-1; i++)
+		{
+			k = keyarr[i];
+			pos2 = posarr[i+1];
+			length = pos2-pos1;
+			pos1 = pos2;
+			inputarr[i] = file + ":" + k + ":" + length;
+//			samp_input_str = samp_input_str + file + ":" + k + ":" + length + ",";
+			if(i%1000==0)
+				Log.info("$%%%%%%%%%%%%%% key = " + k + "; length = " + length + "; count = " + i);
+		}
+		k = keyarr[keyarr.length-1];
+		pos2 = fs.getFileStatus(new Path(file, "data")).getLen();
+		length = pos2-pos1;
+		inputarr[keyarr.length-1] = file + ":" + k + ":" + length;
+//		samp_input_str = samp_input_str + file + ":" + k + ":" + length + ",";
+		Log.info("$%%%%%%%%%%%%%% key = " + k + "; length = " + length + "; count = " + keylist.size());
+		
+		samp_input_str = StringUtils.join(inputarr, ",");
+	}
+	
+	job.getConfiguration().set(SampleInputUtil.SAMP_DIR, samp_input_str);
+	*/
+	//System.exit(job.waitForCompletion(true) ? 0 : 1);
 }
 

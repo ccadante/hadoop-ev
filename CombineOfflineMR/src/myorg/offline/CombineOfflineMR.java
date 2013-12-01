@@ -48,8 +48,8 @@ public class CombineOfflineMR{
 		}
 //		FileInputFormat.addInputPath(job, new Path(otherArgs[0]));
 		
-		System.exit(job.waitForCompletion(true) ? 0 : 1);
-		//System.exit(job.waitForSampleCompletion() ? 0 : 1);
+		//System.exit(job.waitForCompletion(true) ? 0 : 1);
+		System.exit(job.waitForSampleCompletion() ? 0 : 1);
 	}
 	
 }

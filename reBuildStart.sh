@@ -22,6 +22,14 @@ cd ..
 echo "exec \"jar cvf offline.jar -C bin .\" -- done"
 
 echo ""
+cd /home/temp/Desktop/MaReV-tools
+echo "exec \"copyhadoopev.sh\"..."
+./copyhadoopev.sh
+echo "exec \"copyhadoopev.sh\" -- done"
+cd /home/temp/Projects/hadoop-ev
+
+
+echo ""
 echo "exec \"bin/start-all.sh\"..."
 bin/start-all.sh
 echo "exec \"bin/start-all.sh\" -- done"

@@ -8,9 +8,12 @@ import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.io.Writable;
 import org.apache.hadoop.mapreduce.InputSplit;
-import org.mortbay.log.Log;
+import org.apache.hadoop.mapreduce.MapFileSampleProc;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 
 public class CombineSampleSplit extends InputSplit implements Writable {
+	public static final Log LOG = LogFactory.getLog(CombineSampleSplit.class);
 
 	private SamplePath[] paths;
 	private long totLength;
@@ -75,7 +78,7 @@ public class CombineSampleSplit extends InputSplit implements Writable {
   		paths = new SamplePath[arrLength];
   		for(int i=0; i<arrLength;i++) {
   			String strin = Text.readString(in);
-  			Log.info("@@@@@@ + " + strin);	
+  			//LOG.info("@@@@@@ + " + strin);	
   			String[] file_key_size = strin.split(":");
   			paths[i] = new SamplePath(new Path(file_key_size[0]), file_key_size[1], Long.parseLong(file_key_size[2]));
   		}

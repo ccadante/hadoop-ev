@@ -2178,7 +2178,7 @@ class ReduceTask extends Task {
               // we should indicate progress as we don't want TT to think
               // we're stuck and kill us
               reporter.progress();
-              Thread.sleep(5000);
+              Thread.sleep(1000); // For MaReV speed up: 5000 -> 1000
             }
           } catch (InterruptedException e) { } // IGNORE
           
@@ -2953,7 +2953,7 @@ class ReduceTask extends Task {
 	  }
 	  String servAddr = conf.get("mapred.job.tracker", "localhost:9001");
 	  servAddr = servAddr.substring(0, servAddr.lastIndexOf(":"));
-	  LOG.warn("sendReduceResultToJob: " + servAddr + ":" + serverPort +
+	  LOG.warn("sendReduceResultToJob: " + servAddr + ":" + serverPort + " key = " + keys.toString() + 
 			  " value = " + results.toString());
 	  int reTry = 0;
 	  Socket dataSkt = null;

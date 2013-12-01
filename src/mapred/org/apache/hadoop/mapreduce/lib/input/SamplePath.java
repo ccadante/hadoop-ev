@@ -6,6 +6,9 @@ import org.apache.hadoop.fs.Path;
 
 public class SamplePath
 {
+	// Example: mappath: hdfs://temp-server:9000/user/temp/data10G-1/CCTV009a_L
+	// 			key: CCTV009a_L/1/1373041287960
+	// 			Length:50597
 	public Path file_path;
 	public String sample_key;
 	public long size;

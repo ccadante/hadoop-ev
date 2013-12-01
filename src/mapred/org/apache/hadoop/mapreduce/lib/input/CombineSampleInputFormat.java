@@ -8,10 +8,12 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Set;
 
+import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.fs.PathFilter;
 import org.apache.hadoop.io.*;
+import org.apache.hadoop.mapreduce.EVStatistics;
 import org.apache.hadoop.mapreduce.InputSplit;
 import org.apache.hadoop.mapreduce.JobContext;
 import org.apache.hadoop.mapreduce.RecordReader;
@@ -19,9 +21,12 @@ import org.apache.hadoop.mapreduce.TaskAttemptContext;
 import org.apache.hadoop.mapreduce.lib.input.CombineFileRecordReader;
 import org.apache.hadoop.mapreduce.lib.input.CombineFileSplit;
 import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
-import org.mortbay.log.Log;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 
 public class CombineSampleInputFormat extends FileInputFormat<Text, BytesWritable> {
+	private static final Log LOG = LogFactory.getLog(CombineSampleInputFormat.class);
+	
 	public static final String SPLIT_MINSIZE_PERNODE = 
 			"mapreduce.input.fileinputformat.split.minsize.per.node";
 	public static final String SPLIT_MINSIZE_PERRACK = 
@@ -144,7 +149,7 @@ public class CombineSampleInputFormat extends FileInputFormat<Text, BytesWritabl
 	    			" cannot be smaller than minimum split " + "size per rack " + minSizeRack);
 	    }
 
-	    Log.info("$$$$$$$$$$$$$  max size = " + maxSize);
+	    LOG.info("$$$$$$$$$$$$$  max size = " + maxSize);
 	    
 	    // all the files in input set
 	    SamplePath[] paths = SampleInputUtil.getInputSamplePaths(job);
@@ -175,14 +180,20 @@ public class CombineSampleInputFormat extends FileInputFormat<Text, BytesWritabl
 			myPaths.add(p); // add it to my output set
 			iter.remove();
     	}
-    	// create splits for all files in this pool.
-    	getMoreSplits(job, myPaths.toArray(new SamplePath[myPaths.size()]), 
-                    maxSize, minSizeNode, minSizeRack, splits);
+    	
+    	if (conf.getBoolean("mapred.input.fileinputformat.splitByTime", false)){ // By time
+    		long maxTime = conf.getLong("mapred.input.fileinputformat.splitByTime.maxTime", 60000);
+	    	getMoreSplits(job, myPaths.toArray(new SamplePath[myPaths.size()]), 
+	                    maxTime, splits);
+    	} else { // By size
+	    	getMoreSplits(job, myPaths.toArray(new SamplePath[myPaths.size()]), 
+	                    maxSize, minSizeNode, minSizeRack, splits);
+    	}
 
 	    // free up rackToNodes map
 	    rackToNodes.clear();
 	    return splits;    
-	}
+	}	
 
 	/**
 	 * Return all the splits in the specified set of paths
@@ -191,8 +202,7 @@ public class CombineSampleInputFormat extends FileInputFormat<Text, BytesWritabl
 	                           long maxSize, long minSizeNode, long minSizeRack,
 	                           List<InputSplit> splits)
 	    throws IOException {
-	    Configuration conf = job.getConfiguration();
-
+		
 	    if (paths.length == 0) {
 	    	return; 
 	    }
@@ -202,7 +212,7 @@ public class CombineSampleInputFormat extends FileInputFormat<Text, BytesWritabl
 
 	    for (SamplePath sp : paths)
 	    {
-	    	if(sp.size < 0 || sp.size > 100000)
+	    	if(sp.size < 1000 || sp.size > 150000)
 	    		continue;
 	    	validPaths.add(sp);
 	    	curSplitSize += sp.size;
@@ -212,10 +222,40 @@ public class CombineSampleInputFormat extends FileInputFormat<Text, BytesWritabl
 	  	      	validPaths.clear();
 	  	      	curSplitSize = 0;
 	    	}
+	    	
 	    }
 	    addCreatedSplit(splits, validPaths);
 	    validPaths.clear();
-	    Log.info("lglglglg split size = " + splits.size());
+	    LOG.info("$$$$$$$$$$$$$ split number = " + splits.size());
+	}
+	
+	private void getMoreSplits(JobContext job, SamplePath[] paths,
+			long maxTime, List<InputSplit> splits) {
+		Configuration conf = job.getConfiguration();
+	    if (paths.length == 0) {
+	    	return; 
+	    }
+
+	    ArrayList<SamplePath> validPaths = new ArrayList<SamplePath>();
+	    
+	    long curSplitTime = 0;
+	    for (SamplePath sp : paths) {
+	    	if(sp.size < 1000 || sp.size > 150000)
+	    		continue;
+	    	validPaths.add(sp);
+	    	String keyName = "mapred.input.fileinputformat.splitByTime."
+	    		+ sp.sample_key.substring(0, sp.sample_key.lastIndexOf("/"));
+	    	curSplitTime += conf.getLong(keyName, 1000);
+	    	if (curSplitTime >= maxTime)
+	    	{
+	  	      	addCreatedSplit(splits, validPaths);
+	  	      	validPaths.clear();
+	  	      	curSplitTime = 0;
+	    	}
+	    }
+	    addCreatedSplit(splits, validPaths);
+	    validPaths.clear();
+	    LOG.info("$$$$$$$$$$$$$ split number = " + splits.size());
 	}
 
 	private void addCreatedSplit(List<InputSplit> splitList, ArrayList<SamplePath> validPaths) {

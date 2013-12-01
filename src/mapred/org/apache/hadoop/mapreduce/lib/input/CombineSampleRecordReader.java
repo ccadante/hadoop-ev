@@ -3,6 +3,7 @@ package org.apache.hadoop.mapreduce.lib.input;
 import java.io.IOException;
 import java.util.ArrayList;
 
+import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.hadoop.fs.FileSystem;
@@ -14,15 +15,17 @@ import org.apache.hadoop.io.Text;
 import org.apache.hadoop.io.Writable;
 import org.apache.hadoop.io.WritableComparable;
 import org.apache.hadoop.mapreduce.InputSplit;
+import org.apache.hadoop.mapreduce.MapFileSampleProc;
 import org.apache.hadoop.mapreduce.RecordReader;
 import org.apache.hadoop.mapreduce.TaskAttemptContext;
 import org.apache.hadoop.mapreduce.lib.input.CombineFileSplit;
 import org.apache.hadoop.util.ReflectionUtils;
-import org.mortbay.log.Log;
 
+import org.apache.commons.logging.Log;
 
 
 public class CombineSampleRecordReader extends RecordReader<Text, BytesWritable> {
+	public static final Log LOG = LogFactory.getLog(CombineSampleRecordReader.class);
 
 	private CombineSampleSplit split;
 	private Configuration conf;
@@ -73,7 +76,7 @@ public class CombineSampleRecordReader extends RecordReader<Text, BytesWritable>
 	@Override
 	public boolean nextKeyValue() throws IOException, InterruptedException
 	{
-		Log.info("$$$$$ split path number = " + split.getNumPaths() + "; index = " + index);
+		//LOG.info("$$$$$ split path number = " + split.getNumPaths() + "; index = " + index);
 		if (fileProcessed || index==split.getNumPaths())
 		{
 			return false;

@@ -1197,8 +1197,8 @@ public class Job extends JobContext {
       }
       
       for (String key : final_stat.keySet()) {
-    	  LOG.info(key + "\tavg(Time) = " + final_stat.get(key).avg + "  var(Value) = " + final_stat.get(key).var + " count = " +
-    			  final_stat.get(key).count);
+    	  LOG.info(key + "    avg(Time) = " + final_stat.get(key).avg + "  var(Value) = " + final_stat.get(key).var
+    			  + "  count = " + final_stat.get(key).count);
       }
       
       // Process mapper_time and reducer_time
@@ -1228,13 +1228,14 @@ public class Job extends JobContext {
     	  evStats.addAggreStat("first_mapper_time", String.valueOf(firstMapperTime));
     	  evStats.addAggreStat("last_mapper_time", String.valueOf(lastMapperTime));
     	  evStats.addAggreStat("avg_reducer_time", String.valueOf(avgReducerTime));
-    	  LOG.info("firstMapperTime = " + firstMapperTime + "  lastMapperTime = " + lastMapperTime + "  " +
-    			  "whole map phase = " + (lastMapperTime - firstMapperTime) + 
+    	  LOG.info("firstMapper_startTimestamp = " + firstMapperTime + "  lastMapper_endTimestamp = " + lastMapperTime
+    			  + "  " + "whole map phase = " + (lastMapperTime - firstMapperTime) + 
     			  "ms  avgReducerTime = " + avgReducerTime + "ms");
       } else {
     	  evStats.addAggreStat("time_per_record", String.valueOf(0));
     	  evStats.addAggreStat("total_size", String.valueOf(0));
     	  evStats.addAggreStat("first_mapper_time", String.valueOf(0));
+    	  evStats.addAggreStat("last_mapper_time", String.valueOf(lastMapperTime));
     	  evStats.addAggreStat("avg_reducer_time", String.valueOf(0));
     	  LOG.info("firstMapperTime = " + 0 + "  lastMapperTime = " + 0 + "  " +
     			  "whole map phase = " + (0 - 0) + 
@@ -1260,7 +1261,7 @@ public class Job extends JobContext {
 	  synchronized (reduceResults) {
 		  for (int i=0; i<final_keys.size(); i++) {		  
 			  String key = final_keys.get(i);
-			  //LOG.info("addReduceResults: " + key + "  val = " + final_val.get(i) + "  var = " + final_var.get(i));
+			  LOG.info("addReduceResults: " + key + "  val = " + final_val.get(i) + "  var = " + final_var.get(i));
 			  if (!reduceResults.containsKey(key)) {
 				  ArrayList<Double> val_list = new ArrayList<Double>();
 				  val_list.add(final_val.get(i));
@@ -1295,7 +1296,7 @@ public class Job extends JobContext {
   
   public double[] processReduceResults(long n, long N, OpType op) {
 	  if (op == OpType.SUM) {
-		  LOG.info("Sample Size: " + n + "\t Total size: " + N);
+		  LOG.info("processReduceResults: Sample Size: " + n + "\t Total size: " + N);
 		  ArrayList<String> emptyKeys = new ArrayList<String>();
 		  ArrayList<String> nonEmptyKeys = new ArrayList<String>();
 		  double final_sum = 0;
@@ -1304,14 +1305,16 @@ public class Job extends JobContext {
 			  ArrayList<ArrayList<Double>> lists = reduceResults.get(key);
 			  ArrayList<Double> val_list = lists.get(0);
 			  double sum = 0.0;
+			  double valSize = (double) val_list.size();
 			  for (double v : val_list) {
 				  sum += v;
 			  }
 			  if (val_list.size() > 0) {
-				  sum = sum / (double) val_list.size();
+				  sum = sum / valSize;
 			  }
 			  val_list.clear();
 			  val_list.add(sum);
+			  LOG.info("#########  key = " + key + "  value = " + sum + "  (valSize = " + valSize + ")");
 			  
 			  final_sum += sum;
 			  
@@ -1320,17 +1323,20 @@ public class Job extends JobContext {
 			  for (double v : var_list) {
 				  var += v;
 			  }
+			  double varSize = (double) var_list.size();
 			  if (var_list.size() > 0) {
-				  var = var / (double) var_list.size();
+				  var = var / varSize;
 			  }
 			  var_list.clear();
-			  var_list.add(var);
-			  LOG.info("$###############  key = " + key + "; var = " + var);
+			  var_list.add(var);			  
+			  double samSize = 0;
 			  if (sampledSize.containsKey(key))
 			  {
 				  var = var/sampledSize.get(key);
-				  LOG.info("$###########sampledSize####  key = " + key + "; var = " + var);
+				  samSize = sampledSize.get(key);
 			  }
+			  LOG.info("#########  key = " + key + "  var = " + var
+					  + "  (varSize = " + varSize + ", sampleSize = " + samSize + ")");
 			  final_var += var;
 			  
 			  //LOG.info("processReduceResults.reduce result.keySet: "+key+"\t"+var);
