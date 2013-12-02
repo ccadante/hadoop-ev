@@ -162,10 +162,7 @@ public class MapFileSampleProc {
 			  // NOTE: when computing extraCost and nextSize, we need to consider the number of parallel
 			  // Map slots.
 			  if (avgTime > 0) {
-				  //extraCost = totalTimeCost - avgTime * totalSize / max_slotnum; // in millisecond
 				  extraCost = totalTimeCost - (lastMapperTime - firstMapperTime);
-				  //nextSize = (int) (((deadline - System.currentTimeMillis()) * sample2ndRoundPctg - extraCost)
-					//	  / avgTime * max_slotnum);
 			  }
 			  LOG.info("avgCost = " + avgTime + "ms ; recordSize = " + totalSize +
 					  " ; extraCost = " + extraCost + "ms ; totalCost = " + totalTimeCost + "ms");
