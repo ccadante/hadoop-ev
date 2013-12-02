@@ -10,6 +10,8 @@ import java.util.Map;
 import java.util.Random;
 import java.util.Set;
 
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
@@ -29,7 +31,6 @@ import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
 import org.apache.hadoop.mapreduce.lib.input.SequenceFileInputFilter;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 import org.apache.hadoop.util.ReflectionUtils;
-import org.mortbay.log.Log;
 
 /**
  * 
@@ -39,7 +40,8 @@ import org.mortbay.log.Log;
  *
  */
 public class SequenceFileSampleProc {
-
+	public static final Log LOG = LogFactory.getLog(SequenceFileSampleProc.class);
+	
 	private Job originjob;
 	private HashMap<String, List<SequenceFileRecord>> keyreclist 
 					= new HashMap<String, List<SequenceFileRecord>>();
@@ -95,7 +97,7 @@ public class SequenceFileSampleProc {
 		int max_mapnum = job.getConfiguration().getInt("mapred.tasktracker.map.tasks.maximum", 2);
 		max_slotnum = datanode_num*max_mapnum;
 		if (max_slotnum <= 0) {
-			Log.info("Can not read number of slots!  datanode_num=" + datanode_num +
+			LOG.info("Can not read number of slots!  datanode_num=" + datanode_num +
 					  " max_mapnum=" + max_mapnum);
 			return false;
 		}
@@ -120,11 +122,11 @@ public class SequenceFileSampleProc {
 		while(System.currentTimeMillis() < deadline)
 		{		
 			runCount++;
-			Log.info("*** Sampling Round - " + runCount + " ***");
+			LOG.info("*** Sampling Round - " + runCount + " ***");
 			long totalTimeCost = System.currentTimeMillis() - timer;
 			timer = System.currentTimeMillis();
 			long extraCost = 0;
-			Log.info("To deadline: " + (deadline - System.currentTimeMillis()) + " ms");
+			LOG.info("To deadline: " + (deadline - System.currentTimeMillis()) + " ms");
 			  
 			Map<String, Stats> distribution = null;
 			int nextSize = 1;
@@ -149,20 +151,20 @@ public class SequenceFileSampleProc {
 					  nextSize = (int) (((deadline - System.currentTimeMillis()) * sample2ndRoundPctg - extraCost)
 							  / avgTime * max_slotnum);
 				  }
-				  Log.info("avgCost = " + avgTime + "ms ; recordSize = " + totalSize +
+				  LOG.info("avgCost = " + avgTime + "ms ; recordSize = " + totalSize +
 						  " ; extraCost = " + extraCost + "ms ; totalCost = " + totalTimeCost + "ms");
 				  
 				  long time_budget = (long) ((deadline - System.currentTimeMillis()) * sample2ndRoundPctg
 						  				- extraCost);
 				  if (time_budget > 0) {
-					  Log.info("Next sampleSize = " + nextSize + " (this may be inaccurate) sampleTime = " + 
+					  LOG.info("Next sampleSize = " + nextSize + " (this may be inaccurate) sampleTime = " + 
 							  	time_budget + " ms");
 					  AdjustDistribution(distribution); // We do not want full distribution, neither average distribution.
 					  sample_len = RandomSampleWithDistributionByTime(files, distribution, time_budget, nextSize,
 							  											true, inputfiles);
 					  //originjob.clearEVStatsSet(); // Clear EVStats ???
 				  } else {
-					  Log.warn("Not enough time budget for Round-2, skipped!");
+					  LOG.warn("Not enough time budget for Round-2, skipped!");
 				  }
 			  } else if (runCount >= 3) {
 				  distribution = originjob.processEVStats();
@@ -179,23 +181,23 @@ public class SequenceFileSampleProc {
 					  nextSize = (int) ((deadline - System.currentTimeMillis() - extraCost - avgReducerTime)
 							  / avgTime * max_slotnum);
 				  }
-				  Log.info("avgCost = " + avgTime + "ms ; recordSize = " + totalSize +
+				  LOG.info("avgCost = " + avgTime + "ms ; recordSize = " + totalSize +
 						  " ; extraCost = " + extraCost + "ms ; totalCost = " + totalTimeCost + "ms");
 				  
 				  long time_budget = (long) ((deadline - System.currentTimeMillis()) - extraCost);
 				  if (time_budget > 0 ){
-					  Log.info("Next sampleSize = " + nextSize + " (this may be inaccurate) sampleTime = " + 
+					  LOG.info("Next sampleSize = " + nextSize + " (this may be inaccurate) sampleTime = " + 
 							  	time_budget + " ms");
 					  sample_len = RandomSampleWithDistributionByTime(files, distribution, time_budget, nextSize,
 							  											true, inputfiles);
 					  //originjob.clearEVStatsSet(); // Clear EVStats ???
 				  } else {
-					  Log.warn("Not enough time budget for Round-" + runCount + ", skipped!");
+					  LOG.warn("Not enough time budget for Round-" + runCount + ", skipped!");
 				  }
 			  }
-			//Log.info("Next sampleSize = " + nextSize);		
+			//LOG.info("Next sampleSize = " + nextSize);		
 			if (nextSize <= 0) {
-				Log.info("Quit!");
+				LOG.info("Quit!");
 				break;
 			}
 			
@@ -204,13 +206,13 @@ public class SequenceFileSampleProc {
 			else
 				sample_len = RandomSampleWithDirs(files, nextSize, inputfiles);*/
 			Long splitsize = all_input_len/max_slotnum;
-			Log.info("max slot number = " + max_slotnum + "; split size = " + splitsize);
+			LOG.info("max slot number = " + max_slotnum + "; split size = " + splitsize);
 			
 			Job newjob = new Job(originjob.getConfiguration(), "sample_" + runCount);
-			Log.info(newjob.getJar());
+			LOG.info(newjob.getJar());
 			newjob.getConfiguration().set("mapred.min.split.size", splitsize.toString());
-			Log.info("minsize = " + FileInputFormat.getMinSplitSize(newjob));
-			Log.info("maxsize = " + FileInputFormat.getMaxSplitSize(newjob));
+			LOG.info("minsize = " + FileInputFormat.getMinSplitSize(newjob));
+			LOG.info("maxsize = " + FileInputFormat.getMaxSplitSize(newjob));
 			FileOutputFormat.setOutputPath(newjob, 
 					new Path(originjob.getConfiguration().get(("mapred.output.dir")) + "_" + runCount));
 			
@@ -231,14 +233,14 @@ public class SequenceFileSampleProc {
 			newjob.waitForCompletion(true);
 			  
 			double[] results = originjob.processReduceResults(inputfiles.size(), N, OpType.SUM);
-			Log.info("RESULT ESTIMATION: sum(avg(Loc)) = " + results[0] + "+-" + results[1] + 
+			LOG.info("RESULT ESTIMATION: sum(avg(Loc)) = " + results[0] + "+-" + results[1] + 
 					  " (95% confidence).\n");
 		}
 		long timeDiff = System.currentTimeMillis() - deadline;
 		if (timeDiff >= 0)
-			Log.info("After deadline: " + Math.abs(timeDiff) + "ms");
+			LOG.info("After deadline: " + Math.abs(timeDiff) + "ms");
 		else
-			Log.info("Before deadline: " + Math.abs(timeDiff) + "ms");
+			LOG.info("Before deadline: " + Math.abs(timeDiff) + "ms");
 		
 		return true;
 	}
@@ -264,11 +266,11 @@ public class SequenceFileSampleProc {
 		while(error > errorConstraint)
 		{		
 			runCount++;
-			Log.info("*** Sampling Round - " + runCount + " ***");
+			LOG.info("*** Sampling Round - " + runCount + " ***");
 			long totalTimeCost = System.currentTimeMillis() - timer;
 			timer = System.currentTimeMillis();
 			long extraCost = 0;
-			Log.info("Target error: " + errorConstraint + " (95%)\t Current error: " + error);
+			LOG.info("Target error: " + errorConstraint + " (95%)\t Current error: " + error);
 			  
 			Map<String, Stats> distribution = null;
 			int nextSize = 1;
@@ -287,7 +289,7 @@ public class SequenceFileSampleProc {
 				  if (avgTime > 0) {
 					  extraCost = totalTimeCost - avgTime * totalSize / max_slotnum; // in millisecond
 				  }
-				  Log.info("avgCost = " + avgTime + "ms ; recordSize = " + totalSize +
+				  LOG.info("avgCost = " + avgTime + "ms ; recordSize = " + totalSize +
 						  " ; extraCost = " + extraCost + "ms ; totalCost = " + totalTimeCost + "ms");
 				  // Enlarge time budget by 5 times at most in the 2nd round.
 				  sampleEnlargeScale = Math.min(5.0, sampleEnlargeScale); 
@@ -295,14 +297,14 @@ public class SequenceFileSampleProc {
 				  preTimeBudget = time_budget;
 				  nextSize = (int) (time_budget / avgTime * max_slotnum);
 				  if (time_budget > 0) {
-					  Log.info("Next sampleSize = " + nextSize + " (this may be inaccurate) sampleTime = " + 
+					  LOG.info("Next sampleSize = " + nextSize + " (this may be inaccurate) sampleTime = " + 
 							  	time_budget + " ms  (sampleEnlargeScale = " + sampleEnlargeScale + ")");
 					  AdjustDistribution(distribution); // We do not want full distribution, neither average distribution.
 					  sample_len = RandomSampleWithDistributionByTime(files, distribution, time_budget, nextSize,
 							  											true, inputfiles);
 					  //originjob.clearEVStatsSet(); // Clear EVStats ???
 				  } else {
-					  Log.warn("Not enough time budget for Round-2, skipped!");
+					  LOG.warn("Not enough time budget for Round-2, skipped!");
 				  }
 			  } else if (runCount >= 3) {
 				  distribution = originjob.processEVStats();
@@ -314,7 +316,7 @@ public class SequenceFileSampleProc {
 					  extraCost = totalTimeCost - avgTime * totalSize / max_slotnum; // in millisecond
 					  nextSize = 1;
 				  }
-				  Log.info("avgCost = " + avgTime + "ms ; recordSize = " + totalSize +
+				  LOG.info("avgCost = " + avgTime + "ms ; recordSize = " + totalSize +
 						  " ; extraCost = " + extraCost + "ms ; totalCost = " + totalTimeCost + "ms");
 				  
 				  // Enlarge time budget by 10 times at most in the 3nd round or later.
@@ -323,18 +325,18 @@ public class SequenceFileSampleProc {
 				  preTimeBudget = time_budget;
 				  nextSize = (int) (time_budget / avgTime * max_slotnum);
 				  if (time_budget > 0 ){
-					  Log.info("Next sampleSize = " + nextSize + " (this may be inaccurate) sampleTime = " + 
+					  LOG.info("Next sampleSize = " + nextSize + " (this may be inaccurate) sampleTime = " + 
 							  	time_budget + " ms  (sampleEnlargeScale = " + sampleEnlargeScale + ")");
 					  sample_len = RandomSampleWithDistributionByTime(files, distribution, time_budget, nextSize,
 							  											true, inputfiles);
 					  //originjob.clearEVStatsSet(); // Clear EVStats ???
 				  } else {
-					  Log.warn("Not enough time budget for Round-" + runCount + ", skipped!");
+					  LOG.warn("Not enough time budget for Round-" + runCount + ", skipped!");
 				  }
 			  }
-			//Log.info("Next sampleSize = " + nextSize);		
+			//LOG.info("Next sampleSize = " + nextSize);		
 			if (nextSize <= 0) {
-				Log.info("Quit!");
+				LOG.info("Quit!");
 				break;
 			}
 			
@@ -343,13 +345,13 @@ public class SequenceFileSampleProc {
 			else
 				sample_len = RandomSampleWithDirs(files, nextSize, inputfiles);*/
 			Long splitsize = all_input_len/max_slotnum;
-			Log.info("max slot number = " + max_slotnum + "; split size = " + splitsize);
+			LOG.info("max slot number = " + max_slotnum + "; split size = " + splitsize);
 			
 			Job newjob = new Job(originjob.getConfiguration(), "sample_" + runCount);
-			Log.info(newjob.getJar());
+			LOG.info(newjob.getJar());
 			newjob.getConfiguration().set("mapred.min.split.size", splitsize.toString());
-			Log.info("minsize = " + FileInputFormat.getMinSplitSize(newjob));
-			Log.info("maxsize = " + FileInputFormat.getMaxSplitSize(newjob));
+			LOG.info("minsize = " + FileInputFormat.getMinSplitSize(newjob));
+			LOG.info("maxsize = " + FileInputFormat.getMaxSplitSize(newjob));
 			FileOutputFormat.setOutputPath(newjob, 
 					new Path(originjob.getConfiguration().get(("mapred.output.dir")) + "_" + runCount));
 			
@@ -370,74 +372,42 @@ public class SequenceFileSampleProc {
 			newjob.waitForCompletion(true);
 			  
 			double[] results = originjob.processReduceResults(inputfiles.size(), N, OpType.SUM);
-			Log.info("RESULT ESTIMATION: sum(avg(Loc)) = " + results[0] + "+-" + results[1] + 
+			LOG.info("RESULT ESTIMATION: sum(avg(Loc)) = " + results[0] + "+-" + results[1] + 
 					  " (95% confidence).\n");
 			error = results[1];
 			sampleEnlargeScale = Math.pow((error / errorConstraint), 2.0); // Update sampleEnlargeScale
 		}
-		Log.info("*** Job is done! ***");
+		LOG.info("*** Job is done! ***");
 		
 		return true;
 	}
 	
 	// We adjust the distribution by adding every variance with the (max_var + min_var) / 2.0. 
-	// This is to average the distribution a bit since we do not trust it completely. 
-	  private void AdjustDistribution(Map<String, Stats> distribution) {
-		double minVar = Double.MAX_VALUE;
-		double maxVar = Double.MIN_VALUE;
-		for (String key : distribution.keySet()) {
-			double var = distribution.get(key).var;
-			if (var < minVar) {
-				minVar = var;
+		// This is to average the distribution a bit since we do not trust it completely. 
+		  @SuppressWarnings("unused")
+		private void AdjustDistribution(Map<String, Stats> distribution) {
+			double minStd = Double.MAX_VALUE;
+			double maxStd = Double.MIN_VALUE;
+			for (String key : distribution.keySet()) {
+				double std = distribution.get(key).getStd();
+				if (std < minStd) {
+					minStd = std;
+				}
+				if (std > maxStd) {
+					maxStd = std;
+				}
 			}
-			if (var > maxVar) {
-				maxVar = var;
+			double adjustedStd = (maxStd + minStd) / 2.0;
+			for (String key : distribution.keySet()) {
+				distribution.get(key).setVar(Math.pow(distribution.get(key).getStd() + adjustedStd, 2));
 			}
-		}
-		double adjustedVar = (maxVar + minVar) / 2.0;
-		for (String key : distribution.keySet()) {
-			distribution.get(key).var += adjustedVar;
-		}
-		for (String key : distribution.keySet()) {
-	    	 Log.info("(after adjustment) " +  key + "\tavg = " + distribution.get(key).avg + "  var = " + distribution.get(key).var + " count = " +
-	    			  distribution.get(key).count);
-	     }
-	}
-
-	/**
-	   * 
-	   * @param pre_variable: the previously sampled variable, x_a
-	   * @param cur_variable: the randomly selected "next" variable, x_b
-	   * @param distribution
-	   * @return
-	   */
-	  private String MHGetNextVariable(String cur_variable, String nxt_variable,
-			  Map<String, Stats> distribution) {	  
-		  if (cur_variable.equals(nxt_variable)) {
-			  return cur_variable;
-		  }
-		  String nxt_variable_real = null;
-		  double alpha_cur = (distribution.get(cur_variable).count - 1) / 2.0;
-		  double alpha_nxt = (distribution.get(nxt_variable).count - 1) / 2.0;
-		  double beta_cur = (distribution.get(cur_variable).count - 1) /
-				  (2.0 * distribution.get(cur_variable).var);
-		  double beta_nxt = (distribution.get(nxt_variable).count - 1) /
-				  (2.0 * distribution.get(nxt_variable).var);
-		  // lamda = sqrt( E(sigma_b^2 / sigma_a^2) )
-		  double lamda = Math.sqrt( alpha_nxt * beta_cur / (beta_nxt * (alpha_cur - 1)) );
-		  if (lamda >= 1.0 ) {
-			  nxt_variable_real = nxt_variable;
-		  } else {
-			  double r = rand.nextDouble();
-			  if (r <= lamda) // move to the next variable
-				  nxt_variable_real = nxt_variable;
-			  else // stay in the previous variable
-				  nxt_variable_real = cur_variable;
-		  }
-		  return nxt_variable_real;
-	  }
-	  
-	  
+			for (String key : distribution.keySet()) {
+		    	 LOG.info("(after adjustment) " +  key + "\tavg = "
+		    			 + distribution.get(key).getAvg() + "  var = "
+		    			 + distribution.get(key).getVar() + " count = "
+		    			 + distribution.get(key).getCount());
+		     }
+		}  
 	  
 	  
 	/**
@@ -494,14 +464,14 @@ public class SequenceFileSampleProc {
 		Map<String, Double> sampledSize = new HashMap<String, Double>();
 		// Get sample sizes from proportion distribution.
 		Map<String, Double> sizeProportion = new HashMap<String, Double>();
-		double total_var = 0;
+		double total_std = 0;
 		for (String key : distribution.keySet()) {
 			sampledSize.put(key, 0.0);
-			total_var += distribution.get(key).var;	
+			total_std += distribution.get(key).getStd();	
 		}
 	    for (String key : distribution.keySet()) {
-			sizeProportion.put(key, num * distribution.get(key).var / total_var);
-			Log.info("RandomSample-Proportion: " + key + " " + sizeProportion.get(key));
+			sizeProportion.put(key, num * distribution.get(key).getStd() / total_std);
+			LOG.info("RandomSample-Proportion: " + key + " " + sizeProportion.get(key));
 		}
 		int count = num;
 	    int failCount = 0;
@@ -534,7 +504,7 @@ public class SequenceFileSampleProc {
 						variable_idx--;
 					}
 					// Determine the next vairable based on MH algorithm.
-					next_variable = MHGetNextVariable(cur_variable, next_variable, distribution);
+					next_variable = SamplingAlg.MHGetNextVariable(cur_variable, next_variable, distribution);
 				}
 				  
 			} else { // Sample based on size proportion
@@ -569,7 +539,7 @@ public class SequenceFileSampleProc {
 			}
 		}
 		for (String key : sampledSize.keySet()) {
-			Log.info("RandomSample-final: " + key + " " + sampledSize.get(key));
+			LOG.info("RandomSample-final: " + key + " " + sampledSize.get(key));
 		}
 		return sample_len;
 	}
@@ -598,14 +568,14 @@ public class SequenceFileSampleProc {
 		  Map<String, Double> sampledSize = new HashMap<String, Double>();
 		  // Get sample sizes from proportion distribution.
 		  Map<String, Double> sizeProportion = new HashMap<String, Double>();
-		  double total_var = 0;
+		  double total_std = 0;
 		  for (String key : distribution.keySet()) {
 			  sampledSize.put(key, 0.0);
-			  total_var += Math.sqrt( distribution.get(key).var);		  
+			  total_std += distribution.get(key).getStd();		  
 		  }
 		  for (String key : distribution.keySet()) {
-			  sizeProportion.put(key, num_total * Math.sqrt( distribution.get(key).var) / total_var);
-			  Log.info("RandomSample-Proportion: " + key + " " + sizeProportion.get(key));
+			  sizeProportion.put(key, num_total * distribution.get(key).getStd() / total_std);
+			  LOG.info("RandomSample-Proportion: " + key + " " + sizeProportion.get(key));
 		  }
 			  
 		  int count = num_total;
@@ -627,7 +597,7 @@ public class SequenceFileSampleProc {
 					  res_list.add(fileRec);
 					  sampledSize.put(cur_variable, sampledSize.get(cur_variable) + 1);	
 					  sample_len += files.get(idx).getLen();
-					  time += distribution.get(cur_variable).avg; // add the time cost for this variable
+					  time += distribution.get(cur_variable).getAvg(); // add the time cost for this variable
 					  count--;
 					  isChosen = true;
 					  // To find the next sample variable.
@@ -640,7 +610,7 @@ public class SequenceFileSampleProc {
 						  variable_idx--;
 					  }
 					  // Determine the next vairable based on MH algorithm.
-					  next_variable = MHGetNextVariable(cur_variable, next_variable, distribution);
+					  next_variable = SamplingAlg.MHGetNextVariable(cur_variable, next_variable, distribution);
 				  }
 			  } else { // Sample based on size proportion
 				  for (String key : sizeProportion.keySet()) {
@@ -649,7 +619,7 @@ public class SequenceFileSampleProc {
 						  res_list.add(fileRec);
 						  sampledSize.put(key, sampledSize.get(key) + 1);					  
 						  sample_len += files.get(idx).getLen();
-						  time += distribution.get(cur_variable).avg; // add the time cost for this variable
+						  time += distribution.get(cur_variable).getAvg(); // add the time cost for this variable
 						  count--;
 						  isChosen = true;
 						  break;
@@ -668,7 +638,7 @@ public class SequenceFileSampleProc {
 					  res_list.add(fileRec);
 					  sampledSize.put(folder, sampledSize.get(folder) + 1);
 					  sample_len += files.get(idx).getLen();
-					  time += distribution.get(folder).avg; // add the time cost for this variable
+					  time += distribution.get(folder).getAvg(); // add the time cost for this variable
 					  count--;
 					  failCount = 0;
 				  }
@@ -677,7 +647,7 @@ public class SequenceFileSampleProc {
 			  }
 		  }
 		  for (String key : sampledSize.keySet()) {
-			  Log.info("RandomSample-final: " + key + " " + sampledSize.get(key));
+			  LOG.info("RandomSample-final: " + key + " " + sampledSize.get(key));
 		  }
 		  return sample_len;
 	  }
@@ -696,11 +666,11 @@ public class SequenceFileSampleProc {
 		{
 			String loc =files.get(i).getReduceKey();
 			Stats newStats = originjob.evStats.new Stats();
-			newStats.var = 1.0;
+			newStats.setVar(1.0);
 			sizeProportion.put(loc, newStats); // average among directories.
 		}
 		int num = numPerFolder * sizeProportion.size(); // sum = #folder * numPerFolder.
-		Log.info("Next sampleSize = " + num);
+		LOG.info("Next sampleSize = " + num);
 		return RandomSampleWithDistribution(files, sizeProportion, num, false, res_list);
 	}
 	
@@ -724,11 +694,11 @@ public class SequenceFileSampleProc {
 			SequenceFile.Reader reader = new SequenceFile.Reader(FileSystem.get(conf), seqpath, conf);
 			if (reader.isCompressed()) 
 			{
-				Log.info("Values are compressed.");
+				LOG.info("Values are compressed.");
 	        }
             if (reader.isBlockCompressed()) 
             {
-            	Log.info("Records are block-compressed.");
+            	LOG.info("Records are block-compressed.");
             }
             List<SequenceFileRecord> sfrlist = new ArrayList<SequenceFileRecord>();
             Text key = (Text)reader.getKeyClass().newInstance();
@@ -742,7 +712,7 @@ public class SequenceFileSampleProc {
             	totalfilenum++;
             }
 		}
-		Log.info("File number = " + totalfilenum);
+		LOG.info("File number = " + totalfilenum);
 	}  
 	
 	// Get the folder name from a full path name, which is the deepest directory name.
@@ -753,7 +723,7 @@ public class SequenceFileSampleProc {
 			folder = folder.substring(0, folder.lastIndexOf("/"));
 //			folder = folder.substring(folder.lastIndexOf("/")+1);
 		} catch (Exception ex) {
-			  Log.info("GetFolderFromFullPath:" + ex.getMessage());
+			  LOG.info("GetFolderFromFullPath:" + ex.getMessage());
 		}
 		return folder;
 	}

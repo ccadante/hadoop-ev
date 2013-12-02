@@ -653,9 +653,9 @@ class ReduceTask extends Task {
     LOG.info("Running runNewReducer.");
     reducer.run(reducerContext);
     ArrayList<String> results_keys = reducerContext.getKeys();
+    // format: [[val], [var], [count], [time]]
     ArrayList<ArrayList<Double>> results = reducerContext.getValueVar();
     if (results_keys != null && results != null) {
-    	LOG.info("runNewReducer: results Size=" + results.size());
     	sendReduceResultToJob(results_keys, results);
     } else {
     	LOG.warn("No results are available!");
@@ -2964,14 +2964,17 @@ class ReduceTask extends Task {
 			InetAddress ia = InetAddress.getByName(servAddr); // server address
 			dataSkt = new Socket(ia, serverPort);
 			output = new DataOutputStream(dataSkt.getOutputStream());
-			output.writeBytes(1 + "\n"); // Write data type first.
+			output.writeBytes(1 + "\n"); // Write data type first: 1 - from Reducer
 			output.writeBytes(keys.size() + "\n");
 			for (int i=0; i<keys.size(); i++) {
-				String content = "0" + ";" + keys.get(i) + ";" + results.get(0).get(i) + ";" + results.get(1).get(i);
+				String content = "0" + ";" + keys.get(i)
+						+ ";" + results.get(0).get(i)
+						+ ";" + results.get(1).get(i)
+						+ ";" + results.get(2).get(i);
 				output.writeBytes(content + "\n");
 			}
-			if (results.get(2).size() == 2){
-				String content = "1" + ";" + results.get(2).get(0) + ";" + results.get(2).get(1);
+			if (results.get(3).size() == 2){
+				String content = "1" + ";" + results.get(3).get(0) + ";" + results.get(3).get(1);
 				output.writeBytes(content + "\n");
 			} else {
 				LOG.warn("Invalid Reduce result format - (reducer_time)!");

@@ -62,28 +62,26 @@ public class EVStatsServer implements Runnable {
 				ArrayList<String> final_keys = null;
 				ArrayList<Double> final_val = null;
 				ArrayList<Double> final_var = null;
+				ArrayList<Double> final_count = null;
 				ArrayList<Double> reducer_time = null;
 				ArrayList<Double> mapper_time = null;
 				//LOG.info("Statistics built, state = " + state + "; data size = " + data_size);
-				if (state == 0) {
+				if (state == 0) { // from Mapper
 					evStat = new EVStatistics();
 					mapper_time = new ArrayList<Double>();
 				}
-				else if (state == 1) {
+				else if (state == 1) { // from Reducer
 					final_keys = new ArrayList<String>();
 					final_val = new ArrayList<Double>();
 					final_var = new ArrayList<Double>();
+					final_count = new ArrayList<Double>();
 					reducer_time = new ArrayList<Double>();
 				}
 				String stat_piece;
 				while((stat_piece = ipt.readLine()) != null){
-//					LOG.info("stat: " + stat_piece);
+					//LOG.info("stat: " + stat_piece);
 					if (state == 0) { // EVStat data and Cache data
 						String[] contents = stat_piece.split(";");
-						if (contents.length != 3) {
-							LOG.warn("Invalid EVStat format: " + stat_piece);
-							continue;
-						}
 						if (Integer.parseInt(contents[0]) == 0)	// EVStat data
 							evStat.addTimeStat(contents[1], contents[2]);
 						else if (Integer.parseInt(contents[0]) == 1)  // Cache data
@@ -95,15 +93,12 @@ public class EVStatsServer implements Runnable {
 						}
 					} else if (state == 1) { // Reducer
 						String[] contents = stat_piece.split(";");
-						if (contents.length < 3) {
-							LOG.warn("Invalid ReduceResult format.");
-							continue;
-						}
 						if (Integer.parseInt(contents[0]) == 0)	// Reducer results
 						{
 							final_keys.add(contents[1]);
 							final_val.add(Double.parseDouble(contents[2]));
 							final_var.add(Double.parseDouble(contents[3]));
+							final_count.add(Double.parseDouble(contents[4]));
 						} else if (Integer.parseInt(contents[0]) == 1)  // Reducer time
 						{
 							reducer_time.add(Double.parseDouble(contents[1]));
@@ -120,7 +115,7 @@ public class EVStatsServer implements Runnable {
 //					LOG.warn("Added EVStat(Map) into Job with size = " + evStat.getSize() +
 //							"  and one time = " + evStat.getFirstStat() + "  mapper_time = " + mapper_time + "ms");
 				} else if (state == 1) {
-					server.job.addReduceResults(final_keys, final_val, final_var);
+					server.job.addReduceResults(final_keys, final_val, final_var, final_count);
 					server.job.addReduceTime(reducer_time);
 //					LOG.warn("Added ReduceResult into Job with size = " + final_val.size() +
 //							" and one value = " + final_val.get(0) + "variance = " + final_var.get(0) + "  reducer_time = " + reducer_time + "ms");

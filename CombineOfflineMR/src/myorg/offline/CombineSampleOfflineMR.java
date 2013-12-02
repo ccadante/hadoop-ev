@@ -179,10 +179,10 @@ public class CombineSampleOfflineMR {
 			var = var / (double) count;
 			//result.set(sum);
 			result.set(avg);
-			System.out.println(key +" mean=" + result.toString() + " variance=" + var
-					+ " avg=" + avg);
+			System.out.println(key +" avg = " + result.toString() + "  var = " + var
+					+ "  count = " + count);
 			
-			context.write(key, result, var);
+			context.write(key, result, var, count);
 		}
 	}
 	

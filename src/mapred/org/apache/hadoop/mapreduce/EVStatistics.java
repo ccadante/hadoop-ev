@@ -70,14 +70,15 @@ public class EVStatistics {
 	// The real number stats.
 	class Stats {
 		// NOTE: time in ms.
-		double avg;
-		double var;
-		long count;
-		double total;
-		double varTotal;
+		private double avg;
+		private double var;
+		private double std;
+		private long count;
+		private double total;
+		private double varTotal;
 		
 		public Stats () {
-			avg = var = count = 0;
+			avg = var = std = count = 0;
 			total = varTotal = 0.0;
 		}
 		
@@ -99,7 +100,37 @@ public class EVStatistics {
 		public void computeVar() {
 			if (count > 0) {
 				var = varTotal / (double) count;
+				std = Math.sqrt(var);
 			}
+		}
+		
+		public void setVar(double var) {
+			this.var = var;
+			this.std = Math.sqrt(var);
+		}		
+		
+		public double getVar() {
+			return var;
+		}
+		
+		public double getStd() {
+			return std;
+		}
+		
+		public void setAvg(double avg) {
+			this.avg = avg;
+		}
+		
+		public double getAvg() {
+			return avg;
+		}
+		
+		public void setCount(long count) {
+			this.count = count;
+		}
+		
+		public double getCount() {
+			return count;
 		}
 	}
 	

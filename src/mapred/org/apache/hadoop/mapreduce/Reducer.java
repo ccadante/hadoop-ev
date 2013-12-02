@@ -126,6 +126,7 @@ public class Reducer<KEYIN,VALUEIN,KEYOUT,VALUEOUT> {
 	  ArrayList<String> final_keys = new ArrayList<String>();
 	  ArrayList<Double> final_vals = new ArrayList<Double>();
 	  ArrayList<Double> final_vars = new ArrayList<Double>();
+	  ArrayList<Double> final_counts = new ArrayList<Double>();
 	  ArrayList<Double> reducer_time = new ArrayList<Double>(); // Two items only: startTime, timeCost
 	  
     public Context(Configuration conf, TaskAttemptID taskid,
@@ -144,12 +145,13 @@ public class Reducer<KEYIN,VALUEIN,KEYOUT,VALUEOUT> {
             comparator, keyClass, valueClass);
     }
     
-    public void write(KEYOUT key, VALUEOUT value, double var
+    public void write(KEYOUT key, VALUEOUT value, double var, int count
     		) throws IOException, InterruptedException {
     	super.write(key, value);
     	final_keys.add(key.toString());
     	final_vals.add(Double.parseDouble(value.toString()));
     	final_vars.add(var);
+    	final_counts.add((double)count);
     	LOG.info("reduce value = " + value.toString());
 	}
     
@@ -173,6 +175,7 @@ public class Reducer<KEYIN,VALUEIN,KEYOUT,VALUEOUT> {
     	ArrayList<ArrayList<Double>> ret = new ArrayList<ArrayList<Double>>();
     	ret.add(final_vals);
     	ret.add(final_vars);
+    	ret.add(final_counts);
     	ret.add(reducer_time);
     	return ret;
     }
