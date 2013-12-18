@@ -83,20 +83,15 @@ public class MapFileSampleProc {
 		// Get time constraint.
 		timeConstraint = job.getConfiguration().getInt("mapred.deadline.second", 200);
 		// Get error constraint.
-		errorConstraint = job.getConfiguration().getFloat("mapred.deadline.error", (float) 1.0);
+		//errorConstraint = job.getConfiguration().getFloat("mapred.deadline.error", (float) 1.0);
 		// Get error constraint confidence.
 		// NOTE that currently we only manually choose the confidence like 0.90 or 0.95. Change of this
 		// value requires update of the std variance's coefficient in processReduceResults() in Job.java.
-		errorConstraintConfidence = job.getConfiguration().getFloat("mapred.deadline.errorConfidence",
-				                                                    (float) 0.95);
+		//errorConstraintConfidence = job.getConfiguration().getFloat("mapred.deadline.errorConfidence",
+		//		                                                    (float) 0.95);
 		
-		// NOTE that we are using 3-rounds sampling as our bottomline workflow: 1st round to get time cost of 
-		// one map; 2nd round to get the variance of variables; 3rd round to consume all the rest time.
-		// In experiments, we may skip 1st round sometimes assuming we have prior knowledge of time cost of 
-		// one map somehow (just for some test cases to get better time results)
-		// 
 		// Get trial/initial sample rounds number. Please set this to 1 at current stage (07/08/2013).
-		initSampleRound = job.getConfiguration().getInt("mapred.sample.initround", 1);
+		//initSampleRound = job.getConfiguration().getInt("mapred.sample.initround", 1);
 	    // Get trial/initial rounds sample unit size.
 		//initSampleSize = job.getConfiguration().getInt("mapred.sample.initsize", 60);
 		// Get sample size per folder for the 1st round.
@@ -105,16 +100,16 @@ public class MapFileSampleProc {
 		sample2ndRoundPctg = job.getConfiguration().getFloat("mapred.sample.sampleTimePctg",
 				                                                      (float) 0.3);
 		  
-		// Get the sampling policy (algorithm): 0: MH  1: uniform (proportion to folder)  2: same size per folder
+		// Get the sampling policy (algorithm): 0: MaReV  1: uniform (proportion to folder)  2: same size per folder
 		samplingPolicy = job.getConfiguration().getInt("mapred.sample.policy", 0);
 	
 		// Get number of Map slots in the cluster.
 		sampleTimebudgetScale = job.getConfiguration().getFloat("mapred.sample.budgetScale", (float)1.0);		
 		int datanode_num = hdfs.getDataNodeStats().length;
 		int max_mapnum = job.getConfiguration().getInt("mapred.tasktracker.map.tasks.maximum", 2);
-		max_slotnum = datanode_num*max_mapnum;
-		LOG.info("datanode_num=" + datanode_num + " max_mapnum=" + max_mapnum);
-		//max_slotnum = job.getConfiguration().getInt("mapred.sample.slotnum", 20);
+		max_slotnum = datanode_num * max_mapnum;
+		LOG.info("datanode_num = " + datanode_num + "  max_mapnum = " + max_mapnum);
+		
 		if (max_slotnum <= 0) {
 			return false;
 		}
@@ -144,116 +139,86 @@ public class MapFileSampleProc {
 		while(System.currentTimeMillis() < deadline)
 		{		
 			runCount += 1; 
-			LOG.info("");
 			LOG.info("*** Sampling Round - " + runCount + " ***");
+			LOG.info("*** Sampling Policy - " + samplingPolicy + " ***");
 			long totalTimeCost = System.currentTimeMillis() - timer;
 			timer = System.currentTimeMillis();
 			long extraCost = 0;
 			LOG.info("To deadline: " + (deadline - System.currentTimeMillis()) + " ms");
 			  
 			Map<String, Stats> myStats = null;
-			// myStats: Time average, value variance, Time count
+			// myStats format: Time average, value variance, Time count!
 			myStats = originjob.processEVStats();
 			  long avgTime = Long.valueOf(originjob.evStats.getAggreStat("time_per_record")); // in millisecond
 			  int totalSize = Integer.valueOf(originjob.evStats.getAggreStat("total_size")); 
 			  long firstMapperTime = Long.valueOf(originjob.evStats.getAggreStat("first_mapper_time")); // in millisecond
 			  long lastMapperTime = Long.valueOf(originjob.evStats.getAggreStat("last_mapper_time")); // in millisecond
 			  long avgReducerTime = Long.valueOf(originjob.evStats.getAggreStat("avg_reducer_time")); // in millisecond
-			  // NOTE: when computing extraCost and nextSize, we need to consider the number of parallel
-			  // Map slots.
-			  if (avgTime > 0) {
-				  extraCost = totalTimeCost - (lastMapperTime - firstMapperTime);
-			  }
-			  LOG.info("avgCost = " + avgTime + "ms ; recordSize = " + totalSize +
-					  " ; extraCost = " + extraCost + "ms ; totalCost = " + totalTimeCost + "ms");
+				 
+			  extraCost = totalTimeCost - (lastMapperTime - firstMapperTime);
+			  LOG.info("avgCost = " + avgTime + "ms   recordSize = " + totalSize +
+					  "   extraCost = " + extraCost + "ms   totalCost = " + totalTimeCost + "ms");
+			
+			  long time_budget = 0;
 			  
-			  long time_budget = (long) (((deadline - System.currentTimeMillis()) * sample2ndRoundPctg
-					  				- extraCost) * sampleTimebudgetScale);
-			  if (time_budget > 0) {
-				  LOG.info("Next sampleSize = " + 0 + " (this may be inaccurate) sampleTime = " + 
-						  	time_budget + " ms");
-			  }
-				  
-			int nextSize = 1;
 			// get the files total size in a sample and determine the proper split size
 			List<SamplePath> inputfiles = new ArrayList<SamplePath>();
 			Long sample_len = 0L;
 			Long sample_time = 0L;
 			Long[] sample_results;
-			if (runCount >= 1) {
+			
+			if (runCount == 0) { // no sampling, all files
+				for (SamplePath sp : files) {
+					inputfiles.add(sp);					
+				}
+			} else if (runCount == 1) {
 				sample_results = SamplingAlg.RandomSampleWithDirs(files, myStats,
-						sampleSizePerFolder * runCount, inputfiles, filereclist, originjob);
+						sampleSizePerFolder, inputfiles, filereclist, originjob);
 				sample_len = sample_results[0];
 				sample_time = sample_results[1];
-			} else if (runCount == 2) {				
-				  // NOTE: when computing extraCost and nextSize, we need to consider the number of parallel
-				  // Map slots.
-				  if (avgTime > 0) {
-					  extraCost = totalTimeCost - (lastMapperTime - firstMapperTime);
-					  nextSize = (int) (((deadline - System.currentTimeMillis()) * sample2ndRoundPctg - extraCost)
-							  / avgTime * max_slotnum);
-				  }
-				  LOG.info("avgCost = " + avgTime + "ms ; recordSize = " + totalSize +
-						  " ; extraCost = " + extraCost + "ms ; totalCost = " + totalTimeCost + "ms");
-				  
+			} else if (runCount == 2) {						  
 				  time_budget = (long) (((deadline - System.currentTimeMillis()) * sample2ndRoundPctg
 						  				- extraCost) * sampleTimebudgetScale);
 				  if (time_budget > 0) {
-					  LOG.info("Next sampleSize = " + nextSize + " (this may be inaccurate) sampleTime = " + 
-							  	time_budget + " ms");					  
-					  if (samplingPolicy == 0) { // MH 
-						  sample_results = SamplingAlg.RandomSampleWithDistributionByTime(
-								  files, myStats, time_budget, nextSize, true, inputfiles, originjob);
-					  	  sample_len = sample_results[0];
-					  	  sample_time = sample_results[1];
+					  LOG.info("Next sampleTime = " + time_budget + " ms (x " + max_slotnum + ")");					  
+					  if (samplingPolicy == 0) { // MaReV 
+						  sample_results = SamplingAlg.RandomSampleWithDirsByTime(files, myStats,
+								  SamplingAlg.K_0_1, time_budget * max_slotnum, false, avgTime, inputfiles, filereclist, originjob);
+						  sample_len = sample_results[0];
+						  sample_time = sample_results[1];
 					  }
 					  else if (samplingPolicy == 1) {  // Uniform 
-//						   sample_len = RandomSampleByTime(files, distribution, time_budget, inputfiles);
-//							  sample_len = RandomSample(files, (end_index-start_index+1)*sampleSizePerFolder, inputfiles);	//fy
-//							  sample_number = originjob.getConfiguration().getInt("mapred.sample.number", 0);
-						  sample_results = SamplingAlg.RandomSample(
-								  files, myStats, filterarr.length*sampleSizePerFolder, inputfiles, originjob);	//fy
+						   sample_results = SamplingAlg.RandomSampleByTime(
+								   files, myStats, time_budget * max_slotnum, avgTime, inputfiles, originjob);
+						   sample_len = sample_results[0];
+						   sample_time = sample_results[1];
+					  } else if (samplingPolicy == 2) {  // Same per folder, same as MaReV
+						  sample_results = SamplingAlg.RandomSampleWithDirsByTime(files, myStats,
+								  SamplingAlg.K_0_1, time_budget * max_slotnum, false, avgTime, inputfiles, filereclist, originjob);
 						  sample_len = sample_results[0];
-					  	  sample_time = sample_results[1];
-					  } else if (samplingPolicy == 2) {  // Same per folder
-						  int sizePerFolder = (int) ((time_budget / avgTime) /  filereclist.keySet().size());
-						  sample_results = SamplingAlg.RandomSampleWithDirs(
-								  files, myStats, sizePerFolder, inputfiles, filereclist, originjob);
-						  sample_len = sample_results[0];
-					  	  sample_time = sample_results[1];
+						  sample_time = sample_results[1];
 					 }					  
 				  } else {
 					  LOG.warn("Not enough time budget for Round-2, skipped!");
 				  }
-			  } else if (runCount >= 3) {				  
-				  // NOTE: when computing extraCost and nextSize, we need to consider the number of parallel
-				  // Map slots.
-				  if (avgTime > 0) {
-					  //extraCost = totalTimeCost - avgTime * totalSize / max_slotnum; // in millisecond
-					  extraCost = totalTimeCost - (lastMapperTime - firstMapperTime);
-					  nextSize = (int) ((deadline - System.currentTimeMillis() - extraCost)
-							  / avgTime * max_slotnum);
-				  }
-				  LOG.info("avgCost = " + avgTime + "ms ; recordSize = " + totalSize +
-						  " ; extraCost = " + extraCost + "ms ; totalCost = " + totalTimeCost + "ms");
+			  } else if (runCount >= 3) {
 				  time_budget = (long) (((deadline - System.currentTimeMillis()) - extraCost) * sampleTimebudgetScale );
+				  
 				  if (time_budget > 0 ){
-					  LOG.info("Next estimated sampleSize = " + nextSize + " sampleTime = " + 
-							  	time_budget + " ms");
-					  if (samplingPolicy == 0) { // MH
+					  LOG.info("Next sampleTime = " + time_budget + " ms (x " + max_slotnum + ")");	
+					  if (samplingPolicy == 0) { // MaReV
 						  sample_results = SamplingAlg.RandomSampleWithDistributionByTime(
-								  files, myStats, time_budget, nextSize, true, inputfiles, originjob);
+								  files, myStats, time_budget * max_slotnum, false, inputfiles, filereclist, originjob);
 					  	sample_len = sample_results[0];
 					  	sample_time = sample_results[1];
 					  } else if (samplingPolicy == 1) { // Uniform
 						  sample_results = SamplingAlg.RandomSampleByTime(
-								  files, myStats, time_budget, inputfiles, originjob);
+								  files, myStats, time_budget * max_slotnum, avgTime, inputfiles, originjob);
 						  sample_len = sample_results[0];
 						  sample_time = sample_results[1];
 					  } else if (samplingPolicy == 2) {  // Same per folder
-						  int sizePerFolder = (int) ((time_budget / avgTime) /  filereclist.keySet().size());
-						  sample_results = SamplingAlg.RandomSampleWithDirs(
-								  files, myStats, sizePerFolder, inputfiles, filereclist, originjob);
+						  sample_results = SamplingAlg.RandomSampleWithDirsByTime(files, myStats,
+								  SamplingAlg.K_0_1, time_budget * max_slotnum, true, avgTime, inputfiles, filereclist, originjob);
 						  sample_len = sample_results[0];
 						  sample_time = sample_results[1];
 					  }
@@ -261,16 +226,9 @@ public class MapFileSampleProc {
 					  LOG.warn("Not enough time budget for Round-" + runCount + ", skipped!");
 				  }
 			  }
-			//LOG.info("Next sampleSize = " + nextSize);		
-			if (nextSize <= 0) {
-				LOG.info("Quit!");
-				break;
-			}
 			
 			Job newjob = new Job(originjob.getConfiguration(), "sample_" + runCount);
 			LOG.info("Jar: " + newjob.getJar());
-			LOG.info("Split minsize = " + FileInputFormat.getMinSplitSize(newjob));
-			LOG.info("Split maxsize = " + FileInputFormat.getMaxSplitSize(newjob));
 			FileOutputFormat.setOutputPath(newjob, 
 					new Path(originjob.getConfiguration().get(("mapred.output.dir")) + "_" + runCount));
 			
@@ -288,7 +246,9 @@ public class MapFileSampleProc {
 			LOG.info("$$$$$$$$$$$$$ total sample size = " + sample_len
 					+ ", sample time = " + sample_time + ", max slot number = " + max_slotnum);
 			
-			if (runCount == 1) { // split by size
+			if (runCount == 0) { // split by size, default max split size
+				newjob.getConfiguration().setBoolean("mapred.input.fileinputformat.splitByTime", false);
+			} else if (runCount == 1) { // split by size
 				newjob.getConfiguration().setBoolean("mapred.input.fileinputformat.splitByTime", false);
 				Long splitsize = sample_len / max_slotnum / 2;
 				newjob.getConfiguration().setLong("mapreduce.input.fileinputformat.split.maxsize", splitsize);
@@ -309,9 +269,19 @@ public class MapFileSampleProc {
 		}
 		long timeDiff = System.currentTimeMillis() - deadline;
 		if (timeDiff >= 0)
-			LOG.info("After deadline: " + Math.abs(timeDiff) + "ms");
+			LOG.info("After deadline: " + Math.abs(timeDiff) + "ms\n");
 		else
-			LOG.info("Before deadline: " + Math.abs(timeDiff) + "ms");
+			LOG.info("Before deadline: " + Math.abs(timeDiff) + "ms\n");
+		
+		Map<String, Stats> myStats = originjob.processEVStats();
+		long avgTime = Long.valueOf(originjob.evStats.getAggreStat("time_per_record")); // in millisecond
+		int totalSize = Integer.valueOf(originjob.evStats.getAggreStat("total_size")); 
+		long firstMapperTime = Long.valueOf(originjob.evStats.getAggreStat("first_mapper_time")); // in millisecond
+		long lastMapperTime = Long.valueOf(originjob.evStats.getAggreStat("last_mapper_time")); // in millisecond
+		long totalTimeCost = System.currentTimeMillis() - timer;
+		long extraCost = totalTimeCost - (lastMapperTime - firstMapperTime);
+		LOG.info("avgCost = " + avgTime + "ms   recordSize = " + totalSize +
+				  "   extraCost = " + extraCost + "ms   totalCost = " + totalTimeCost + "ms");
 		
 		return true;
 	}
@@ -547,9 +517,6 @@ public class MapFileSampleProc {
 		}
 		return files;
 	}
-
-	
-	
 	
 	/**
 	 * Put all record files in map to files into <\i>filereclist<\i>
@@ -577,8 +544,7 @@ public class MapFileSampleProc {
 		filter_time_day_start = originjob.getConfiguration().getInt("mapred.filter.startTimeOfDay", 0);
 		filter_time_day_end = originjob.getConfiguration().getInt("mapred.filter.endTimeOfDay", 24);
 		
-		LOG.info("$$$$$$$$$$ start index = " + start_index);
-		LOG.info("$$$$$$$$$$ end index = " + end_index);
+		LOG.info("$$$$$$$$$$ mapFiles number = " + mapFiles.length);
 		LOG.info("$$$$$$$$$$ start timeOfDay = " + filter_time_day_start);
 		LOG.info("$$$$$$$$$$ end timeOfDay = " + filter_time_day_end);
 		
@@ -643,7 +609,10 @@ public class MapFileSampleProc {
 					filterFileSize += length;
 				}
 			}
-			filereclist.put(mappath.toString(), reclist);			
+			String folder = mappath.toString();
+			folder = folder.substring(folder.lastIndexOf("/")+1);
+			folder = folder + "/1";
+			filereclist.put(folder, reclist);			
 		}
 		LOG.info("oriFileNum: " + oriFileNum + "  oriFileSize: " + oriFileSize);
 		LOG.info("newFileNum: " + filterFileNum + "  newFileSize: " + filterFileSize);

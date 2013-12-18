@@ -51,11 +51,10 @@ public class CombineSampleOfflineMR {
 	 * @throws InstantiationException 
 	 */
 	public static void main(String[] args) throws IOException, URISyntaxException, ClassNotFoundException, InterruptedException, InstantiationException, IllegalAccessException, CloneNotSupportedException {
-		// TODO Auto-generated method stub
 //		System.loadLibrary(Core.NATIVE_LIBRARY_NAME);
 		
 		Configuration conf = new Configuration();
-		conf.set("mapreduce.input.fileinputformat.split.maxsize", "67108864");
+		conf.set("mapreduce.input.fileinputformat.split.maxsize", "33558864");
 		DistributedCache.createSymlink(conf);
 		DistributedCache.addCacheFile(new URI(conf.get("fs.default.name") + "/libraries/libopencv_java244.so#libopencv_java244.so"), conf);
 		
@@ -77,7 +76,6 @@ public class CombineSampleOfflineMR {
 		FileInputFormat.setInputPaths(job, new Path(otherArgs[0]));
 		FileOutputFormat.setOutputPath(job, new Path(otherArgs[1]));
 		System.exit(job.waitForSampleCompletion() ? 0 : 1);
-
 	}
 	
 	
@@ -90,7 +88,7 @@ public class CombineSampleOfflineMR {
 			System.loadLibrary(Core.NATIVE_LIBRARY_NAME);
 			System.out.println("host: " + InetAddress.getLocalHost().getHostName());
 			long startTime = System.currentTimeMillis();
-			int VC = CountVehicle(value);
+			int VC = CountVehicle(value, key.toString());
 			long usedTime = System.currentTimeMillis() -startTime;
 			String folder = key.toString();
 			folder = folder.substring(0, folder.lastIndexOf("/"));			
@@ -98,7 +96,7 @@ public class CombineSampleOfflineMR {
 			System.out.println(key + " " + usedTime + " " + VC);
 		}
 		
-		public int CountVehicle(BytesWritable value) throws IOException
+		public int CountVehicle(BytesWritable value, String key) throws IOException
 		{
 			car_cascade = new CascadeClassifier();
 			car_cascade.load(cas_file);
@@ -120,31 +118,42 @@ public class CombineSampleOfflineMR {
 			img = Highgui.imdecode(img, Highgui.CV_LOAD_IMAGE_COLOR);
 			//System.out.println("imdec: " + (System.currentTimeMillis()-s));
 
-			int vehicleCount = 0;
-			int frameCount = 0;
+			int vehicleCount = -1;
 			Mat frame_gray = new Mat();
 			
 			if (!img.empty())
 			{
-//				System.out.println("*** frame - " + (++frameCount) + " ***  " + car_cascade.empty());
-			    	
 				MatOfRect cars = new MatOfRect();
 				s = System.currentTimeMillis();
 				Imgproc.cvtColor( img, frame_gray, Imgproc.COLOR_BGR2GRAY );
 				//System.out.println("cvtclr: " + (System.currentTimeMillis()-s));
-
-				s = System.currentTimeMillis();
-				Imgproc.equalizeHist( frame_gray, frame_gray );
-				//System.out.println("eqlhist: " + (System.currentTimeMillis()-s));
-
-				s = System.currentTimeMillis();
-				car_cascade.detectMultiScale( frame_gray, cars, 1.1, 2, 0, new Size(10, 10), new Size(800, 800) );
-				//System.out.println("detect: " + (System.currentTimeMillis()-s));
-				vehicleCount = vehicleCount + cars.height();
 				
+				if (!isCorruptImg(frame_gray)) {
+					s = System.currentTimeMillis();
+					Imgproc.equalizeHist( frame_gray, frame_gray );
+					//System.out.println("eqlhist: " + (System.currentTimeMillis()-s));
+	
+					s = System.currentTimeMillis();
+					car_cascade.detectMultiScale( frame_gray, cars, 1.1, 2, 0, new Size(10, 10), new Size(800, 800) );
+					//System.out.println("detect: " + (System.currentTimeMillis()-s));
+					vehicleCount = vehicleCount + cars.height();
+					if ((System.currentTimeMillis()-s) > 700 || (System.currentTimeMillis()-s) < 100) {			
+						String dump = frame_gray.dump();
+						System.out.println(dump);
+					}
+				}				
 			}
 			return vehicleCount;
 	    }
+		
+		private boolean isCorruptImg(Mat grayImg) {
+			return ((Core.norm(grayImg.row(grayImg.rows() - 1), grayImg.row(grayImg.rows() - 5)) == 0)
+					&& (Core.norm(grayImg.row(grayImg.rows() - 7), grayImg.row(grayImg.rows() - 11)) == 0))
+					|| ((Core.norm(grayImg.row(grayImg.rows() - 50), grayImg.row(grayImg.rows() - 55)) == 0)
+						&& (Core.norm(grayImg.row(grayImg.rows() - 57), grayImg.row(grayImg.rows() - 61)) == 0))
+					|| ((Core.norm(grayImg.row(grayImg.rows() - 100), grayImg.row(grayImg.rows() - 105)) == 0)
+						&& (Core.norm(grayImg.row(grayImg.rows() - 107), grayImg.row(grayImg.rows() - 111)) == 0)); 
+		}
 	}
 	
 	public static class CarAggrReducer extends Reducer<Text, IntWritable, Text, DoubleWritable>{
@@ -167,6 +176,8 @@ public class CombineSampleOfflineMR {
 			ArrayList<Integer> valList = new ArrayList<Integer>();
 			for(IntWritable val:values)
 			{
+				if (val.get() < 0)
+					continue;
 				sum += val.get();
 				valList.add(val.get());
 				count++;
@@ -185,70 +196,5 @@ public class CombineSampleOfflineMR {
 			context.write(key, result, var, count);
 		}
 	}
-	
-
-//	FileInputFormat.addInputPath(job, new Path(otherArgs[0]));
-//	InputFormat<?, ?> input = ReflectionUtils.newInstance(job.getInputFormatClass(), conf);
-//	List<FileStatus> files = ((FileInputFormat)input).getListStatus(job);
-/*
-    FileSystem fs = FileSystem.get(conf);
-    String samp_input_str = "";
-	for(String file : inputs)
-	{
-		SequenceFile.Reader idxreader = new SequenceFile.Reader(fs, new Path(file, "index"), conf);
-		/*
-		String key = "cam1picfull_L.seq/1372953750366";
-	    BytesWritab le value = new BytesWritable();
-		mfreader.get(new Text(key), value);
-		samp_input_str = samp_input_str + 
-				file + ":" + key + ":" + ((BytesWritable)value).getLength() + ",";
-		key = "cam1picfull_L.seq/1372953754727";
-		mfreader.get(new Text(key), value);
-		samp_input_str = samp_input_str + 
-				file + ":" + key + ":" + ((BytesWritable)value).getLength() + ",";
-		Log.info("$%%%%%%%%%%%%%% samp = " + samp_input_str);
-		*/
-/*			Text key = new Text();
-	    LongWritable position = new LongWritable();
-	    ArrayList<String> keylist = new ArrayList<String>();
-	    ArrayList<Long> poslist = new ArrayList<Long>();
-	    while(idxreader.next(key, position))
-	    {
-	    	keylist.add(key.toString());
-	    	poslist.add(position.get());
-	    }
-	    
-		String[] keyarr = keylist.toArray(new String[keylist.size()]);
-		Long[] posarr = poslist.toArray(new Long[poslist.size()]);
-		String[] inputarr = new String[keylist.size()];
-		
-		String k;
-		Long pos1 = poslist.get(0);
-		Long pos2;
-		long length;
-		for (int i=0; i<keyarr.length-1; i++)
-		{
-			k = keyarr[i];
-			pos2 = posarr[i+1];
-			length = pos2-pos1;
-			pos1 = pos2;
-			inputarr[i] = file + ":" + k + ":" + length;
-//			samp_input_str = samp_input_str + file + ":" + k + ":" + length + ",";
-			if(i%1000==0)
-				Log.info("$%%%%%%%%%%%%%% key = " + k + "; length = " + length + "; count = " + i);
-		}
-		k = keyarr[keyarr.length-1];
-		pos2 = fs.getFileStatus(new Path(file, "data")).getLen();
-		length = pos2-pos1;
-		inputarr[keyarr.length-1] = file + ":" + k + ":" + length;
-//		samp_input_str = samp_input_str + file + ":" + k + ":" + length + ",";
-		Log.info("$%%%%%%%%%%%%%% key = " + k + "; length = " + length + "; count = " + keylist.size());
-		
-		samp_input_str = StringUtils.join(inputarr, ",");
-	}
-	
-	job.getConfiguration().set(SampleInputUtil.SAMP_DIR, samp_input_str);
-	*/
-	//System.exit(job.waitForCompletion(true) ? 0 : 1);
 }
 

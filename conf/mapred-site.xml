@@ -1,0 +1,125 @@
+<?xml version="1.0"?>
+<?xml-stylesheet type="text/xsl" href="configuration.xsl"?>
+
+<!-- Put site-specific property overrides in this file. -->
+
+<configuration>
+     <property>
+         <name>mapred.job.tracker</name>
+         <value>temp-server:9001</value>
+     </property>
+
+<property>
+	  <name>mapred.tasktracker.map.tasks.maximum</name>
+	  <value>2</value>
+	  <description>The maximum number of map tasks that will be run
+	  simultaneously by a task tracker.
+	  </description>
+	</property>
+
+<property>
+  <name>mapred.child.java.opts</name>
+  <value>-Xmx1024m</value>
+  <description>Java opts for the task tracker child processes.  
+  The following symbol, if present, will be interpolated: @taskid@ is replaced 
+  by current TaskID. Any other occurrences of '@' will go unchanged.
+  For example, to enable verbose gc logging to a file named for the taskid in
+  /tmp and to set the heap maximum to be a gigabyte, pass a 'value' of:
+        -Xmx1024m -verbose:gc -Xloggc:/tmp/@taskid@.gc
+  
+  The configuration variable mapred.child.ulimit can be used to control the
+  maximum virtual memory of the child processes. 
+  </description>
+</property>
+
+<property>
+  <name>mapred.job.shuffle.input.buffer.percent</name>
+  <value>0.30</value>
+  <description>The percentage of memory to be allocated from the maximum heap
+  size to storing map outputs during the shuffle.
+  </description>
+</property>
+
+<property>
+  <name>mapred.tasktracker.reduce.tasks.maximum</name>
+  <value>4</value>
+  <description>The maximum number of reduce tasks that will be run
+  simultaneously by a task tracker.
+  </description>
+</property>
+
+<property>
+  <name>mapred.job.reuse.jvm.num.tasks</name>
+  <value>-1</value>
+  <description>Reuse spawned JVM.
+  </description>
+</property>
+
+<property>
+  <name>mapred.user.jobconf.limit</name>
+  <value>48396263</value>
+</property>
+
+<!-- MaReV specific configurations --> 
+<!-- MaReV specific configurations --> 
+<property>
+  <name>mapred.deadline.second</name>
+  <value>180</value>
+  <description>The time constraint of job (in seconds).
+  </description>
+</property>
+
+<property>
+  <name>mapred.sample.policy</name>
+  <value>0</value>
+  <description>Sampling policy: 0: MaReV  1: uniform (proportion to folder)  2: same size per folder
+  </description>
+</property>
+
+<property>
+  <name>mapred.sample.sizePerFolder</name>
+  <value>30</value>
+  <description>The initial sample number in the first round (must be > 0).
+  </description>
+</property>
+
+<property>
+  <name>mapred.filter.startTimeOfDay</name>
+  <value>10</value>
+  <description>The start time of day for filtering data (in hour).
+  </description>
+</property>
+
+<property>
+  <name>mapred.filter.endTimeOfDay</name>
+  <value>16</value>
+  <description>The end time of day for filtering data (in hour).
+  </description>
+</property>
+
+
+<property>
+  <name>mapred.sample.printEmptyFolder</name>
+  <value>false</value>
+  <description>Whether to print out folder list to show zero / non-zero computation results.
+  </description>
+</property>
+
+<property>
+  <name>log.counters.enable</name>
+  <value>false</value>
+  <description>Whether to print out counters after Job complete.
+  </description>
+</property>
+
+<property>
+  <name>mapred.committer.job.setup.cleanup.needed</name>
+  <value>false</value>
+  <description> true, if job needs job-setup and job-cleanup.
+	false, otherwise  
+  </description>
+</property>
+
+<!-- MaReV specific configurations --> 
+
+</configuration>

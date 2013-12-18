@@ -427,8 +427,7 @@ class MapTask extends Task {
         new SkippingRecordReader<INKEY,INVALUE>(inputSplit, umbilical, reporter) :
         new TrackedRecordReader<INKEY,INVALUE>(inputSplit, job, reporter);
     job.setBoolean("mapred.skip.on", isSkipping());
-
-
+    
     int numReduceTasks = conf.getNumReduceTasks();
     LOG.info("numReduceTasks: " + numReduceTasks);
     MapOutputCollector collector = null;

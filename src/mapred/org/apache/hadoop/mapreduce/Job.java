@@ -683,6 +683,7 @@ public class Job extends JobContext {
    * @return Map<String, Stats>, e.g., <"16m_1", <avg=1.0, var=0.90>>, <"16m_1", <avg=2.0, var=4.90>>
    */
   public Map<String, Stats> processEVStats(){	  
+	  LOG.info("processEVStats");
 	  long actualSize = 0;
 	  Map<String, Stats> tmp_stat = new HashMap<String, Stats>();
 	  Map<String, Stats> final_stat = new HashMap<String, Stats>();
@@ -776,6 +777,7 @@ public class Job extends JobContext {
 		 // LOG.info("reduceResults.keySet: "+key+"\t"+var);
 		  if (final_stat.containsKey(key)) {
 			  final_stat.get(key).setVar(var);
+			  final_stat.get(key).setCount((long) count);
 		  }
 	  }
       
@@ -794,8 +796,8 @@ public class Job extends JobContext {
       }
       
       for (String key : final_stat.keySet()) {
-    	  LOG.info("#########  " + key + "    avg(Time) = " + final_stat.get(key).getAvg()
-    			  + "  var(Value) = " + final_stat.get(key).getVar()
+    	  LOG.info("#########  " + key + "    avg(Time) = " + String.format("%.3f", final_stat.get(key).getAvg())
+    			  + "  var(Value) = " + String.format("%.3f", final_stat.get(key).getVar())
     			  + "  size = " + final_stat.get(key).getCount());
       }
       
@@ -826,8 +828,8 @@ public class Job extends JobContext {
     	  evStats.addAggreStat("first_mapper_time", String.valueOf(firstMapperTime));
     	  evStats.addAggreStat("last_mapper_time", String.valueOf(lastMapperTime));
     	  evStats.addAggreStat("avg_reducer_time", String.valueOf(avgReducerTime));
-    	  LOG.info("firstMapper_startTimestamp = " + firstMapperTime + "  lastMapper_endTimestamp = " + lastMapperTime
-    			  + "  " + "whole map phase = " + (lastMapperTime - firstMapperTime) + 
+    	  LOG.info("map_startTime = " + firstMapperTime + "  map_endTime = " + lastMapperTime
+    			  + "  " + "map_phase = " + (lastMapperTime - firstMapperTime) + 
     			  "ms  avgReducerTime = " + avgReducerTime + "ms");
       } else {
     	  evStats.addAggreStat("time_per_record", String.valueOf(0));
@@ -854,10 +856,10 @@ public class Job extends JobContext {
 	  synchronized (reduceResults) {
 		  for (int i=0; i<final_keys.size(); i++) {		  
 			  String key = final_keys.get(i);
-			  LOG.info("addReduceResults: " + key
+			  /*LOG.info("addReduceResults: " + key
 					  + "  val = " + final_val.get(i)
 					  + "  var = " + final_var.get(i)
-					  + "  size = " + final_count.get(i));
+					  + "  size = " + final_count.get(i));*/
 			  if (!reduceResults.containsKey(key)) {
 				  ArrayList<Double> val_list = new ArrayList<Double>();
 				  val_list.add(final_val.get(i));
@@ -913,11 +915,17 @@ public class Job extends JobContext {
 				  count += count_list.get(i);			  
 			  }
 			  for (int i = 0; i < val_list.size(); i++) {
-				  val += val_list.get(i) * count_list.get(i) / count; // weighted average value			  
+				  double weight = count_list.get(i) / count;
+				  val += val_list.get(i) * weight;			  
 			  }
+			  double val_2 = 0; // E(x^2)
 			  for (int i = 0; i < var_list.size(); i++) {
-				  var += var_list.get(i) * Math.pow(count_list.get(i) / count, 2); // weighted variance			  
-			  }		  
+				  double weight = count_list.get(i) / count;
+				  // E(x^2) = var + (E(x))^2
+				  val_2 += weight * (var_list.get(i) + Math.pow(val_list.get(i), 2));
+			  }		
+			  // var = E(x^2) - (E(x))^2
+			  var = val_2 - Math.pow(val, 2);
 			  // update reduceResults
 			  val_list.clear();
 			  val_list.add(val);
@@ -926,10 +934,9 @@ public class Job extends JobContext {
 			  count_list.clear();
 			  count_list.add(count);
 			  
-			  LOG.info("#########  key = " + key
-					  + "  val = " + val
-					  + "  var = " + var
-					  + "  (size = " + count + ")");
+			  LOG.info("#########  " + key + "    val(Value) = " + String.format("%.3f", val)
+					  + "  var(Value) = " + String.format("%.3f", var)
+					  + "  size = " + count);
 			  
 			  final_sum += val;
 			  final_var += var;			  			  
