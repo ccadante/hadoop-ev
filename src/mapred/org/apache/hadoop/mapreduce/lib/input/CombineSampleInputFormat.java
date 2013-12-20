@@ -149,7 +149,7 @@ public class CombineSampleInputFormat extends FileInputFormat<Text, BytesWritabl
 	    			" cannot be smaller than minimum split " + "size per rack " + minSizeRack);
 	    }
 
-	    LOG.info("$$$$$$$$$$$$$  max size = " + maxSize);
+	    //LOG.info("$$$$$$$$$$$$$  max size = " + maxSize);
 	    
 	    // all the files in input set
 	    SamplePath[] paths = SampleInputUtil.getInputSamplePaths(job);
@@ -182,12 +182,12 @@ public class CombineSampleInputFormat extends FileInputFormat<Text, BytesWritabl
     	}
     	
     	if (conf.getBoolean("mapred.input.fileinputformat.splitByTime", false)){ // By time
-    		LOG.info("splitByTime!");
     		long maxTime = conf.getLong("mapred.input.fileinputformat.splitByTime.maxTime", 60000);
-	    	getMoreSplits(job, myPaths.toArray(new SamplePath[myPaths.size()]), 
+    		LOG.info("splitByTime! maxTime = " + maxTime);
+    		getMoreSplits(job, myPaths.toArray(new SamplePath[myPaths.size()]), 
 	                    maxTime, splits);
     	} else { // By size
-    		LOG.info("splitBySize!");
+    		LOG.info("splitBySize! maxSize = " + maxSize);
 	    	getMoreSplits(job, myPaths.toArray(new SamplePath[myPaths.size()]), 
 	                    maxSize, minSizeNode, minSizeRack, splits);
     	}
@@ -212,12 +212,14 @@ public class CombineSampleInputFormat extends FileInputFormat<Text, BytesWritabl
 	    ArrayList<SamplePath> validPaths = new ArrayList<SamplePath>();
 	    long curSplitSize = 0;
 
+	    long totalSize = 0;
 	    for (SamplePath sp : paths)
 	    {
-	    	if(sp.size < 1000 || sp.size > 150000)
+	    	if(!isValidDataSize(sp.size))
 	    		continue;
 	    	validPaths.add(sp);
 	    	curSplitSize += sp.size;
+	    	totalSize += sp.size;
 	    	if (maxSize != 0 && curSplitSize >= maxSize)
 	    	{
 	  	      	addCreatedSplit(splits, validPaths);
@@ -228,7 +230,18 @@ public class CombineSampleInputFormat extends FileInputFormat<Text, BytesWritabl
 	    }
 	    addCreatedSplit(splits, validPaths);
 	    validPaths.clear();
-	    LOG.info("$$$$$$$$$$$$$ split number = " + splits.size());
+	    LOG.info("split number = " + splits.size() + "  totalSize = " + totalSize);
+	}
+	
+	/**
+	 * Filer data with the length
+	 * @return
+	 */
+	private boolean isValidDataSize(long length) {
+		if (length < 1000 || length > 200000) {
+			return false;
+		}
+		return true;
 	}
 	
 	private void getMoreSplits(JobContext job, SamplePath[] paths,
@@ -241,13 +254,20 @@ public class CombineSampleInputFormat extends FileInputFormat<Text, BytesWritabl
 	    ArrayList<SamplePath> validPaths = new ArrayList<SamplePath>();
 	    
 	    long curSplitTime = 0;
+	    long avgTimeCost = conf.getLong("mapred.sample.avgTimeCost", 300);
+	    long totalTimeCost = 0;
 	    for (SamplePath sp : paths) {
-	    	if(sp.size < 1000 || sp.size > 150000)
+	    	if(!isValidDataSize(sp.size))
 	    		continue;
 	    	validPaths.add(sp);
 	    	String keyName = "mapred.input.fileinputformat.splitByTime."
 	    		+ sp.sample_key.substring(0, sp.sample_key.lastIndexOf("/"));
-	    	curSplitTime += conf.getLong(keyName, 1000);
+	    	long cost = conf.getLong(keyName, avgTimeCost);
+	    	curSplitTime += cost;
+	    	totalTimeCost += cost;
+	    	/*if (cost == avgTimeCost) {
+	    		LOG.debug("Can not find timecost of " + keyName + "  avg " + avgTimeCost);
+	    	}*/
 	    	if (curSplitTime >= maxTime)
 	    	{
 	  	      	addCreatedSplit(splits, validPaths);
@@ -257,7 +277,7 @@ public class CombineSampleInputFormat extends FileInputFormat<Text, BytesWritabl
 	    }
 	    addCreatedSplit(splits, validPaths);
 	    validPaths.clear();
-	    LOG.info("$$$$$$$$$$$$$ split number = " + splits.size());
+	    LOG.info("split number = " + splits.size() + "  totalTimeCost = " + totalTimeCost);
 	}
 
 	private void addCreatedSplit(List<InputSplit> splitList, ArrayList<SamplePath> validPaths) {

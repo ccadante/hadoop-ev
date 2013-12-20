@@ -91,13 +91,25 @@ public class CombineSampleRecordReader extends RecordReader<Text, BytesWritable>
 		BytesWritable value = new BytesWritable();
 		mfreader.get(new Text(sampleKey), value);
 		
-		if (fileLength < 0 || fileLength > 100000)	return false;
+		if (!isValidDataSize(fileLength))
+			return false;
 		currKey.set(sampleKey);
 		currValue.set(value.getBytes(), 0, (int) value.getLength() );
 		index++;
 		return true;
 	}
 
+	/**
+	 * Filer data with the length
+	 * @return
+	 */
+	private boolean isValidDataSize(long length) {
+		if (length < 1000 || length > 200000) {
+			return false;
+		}
+		return true;
+	}
+	
 	@Override
 	public Text getCurrentKey() throws IOException, InterruptedException {
 		return currKey;

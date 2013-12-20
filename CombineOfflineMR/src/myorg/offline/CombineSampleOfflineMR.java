@@ -1,5 +1,8 @@
 package myorg.offline;
 
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileReader;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.URI;
@@ -39,33 +42,42 @@ import org.opencv.objdetect.CascadeClassifier;
 import org.opencv.utils.Converters;
 
 public class CombineSampleOfflineMR {
-
-	/**
-	 * @param args
-	 * @throws IOException 
-	 * @throws URISyntaxException 
-	 * @throws InterruptedException 
-	 * @throws ClassNotFoundException 
-	 * @throws CloneNotSupportedException 
-	 * @throws IllegalAccessException 
-	 * @throws InstantiationException 
-	 */
+	final static String whiteListFile = "/home/temp/Projects/hadoop-ev/conf/dataWhiteList";
+	final static int[] datasizeList = {400};
+	final static int[] deadlineList = {30, 40, 50};
+	final static int[] policyList = {0, 1, 2};
+	
 	public static void main(String[] args) throws IOException, URISyntaxException, ClassNotFoundException, InterruptedException, InstantiationException, IllegalAccessException, CloneNotSupportedException {
-//		System.loadLibrary(Core.NATIVE_LIBRARY_NAME);
-		
 		Configuration conf = new Configuration();
 		conf.set("mapreduce.input.fileinputformat.split.maxsize", "33558864");
+		conf.set("mapred.sample.experimentCount", "7");
+		
+		// Policy: 0: MaReV  1: uniform (proportion to folder)  2: same size per folder
+		conf.set("mapred.sample.policy", "0");
+		conf.set("mapred.deadline.second", "90");
+		conf.set("mapred.sample.sizePerFolder", "10");
+		conf.set("mapred.sample.sampleTimePctg", "0.2");
+		conf.set("mapred.filter.startTimeOfDay", "7");
+		conf.set("mapred.filter.endTimeOfDay", "20");
+		conf.set("mapred.sample.groundTruth", "false");
+		conf.set("mapred.sample.enableWhiteList", "false");		
+		conf.set("mapred.sample.whiteList", "");	
+		
 		DistributedCache.createSymlink(conf);
 		DistributedCache.addCacheFile(new URI(conf.get("fs.default.name") + "/libraries/libopencv_java244.so#libopencv_java244.so"), conf);
 		
 		String[] otherArgs = new GenericOptionsParser(conf, args).getRemainingArgs();
 		if (otherArgs.length != 2)
 		{
-			System.err.println("Usage: CombineOfflineMR <in> <out>");
+			System.err.println("Usage: CombineSampleOfflineMR <in> <out>");
 			System.exit(2);
 		}
-		Job job = new Job(conf, "combile offline mapreduce");
 		
+		conf.set("mapred.sample.enableWhiteList", "true");
+		ArrayList<String> whiteListStr = getWhiteList();	
+		conf.set("mapred.sample.whiteList", whiteListStr.get(0));
+				
+		/*Job job = new Job(conf, "vehicleCounting");		
 		job.setJarByClass(CombineSampleOfflineMR.class);
 		job.setMapperClass(ImageCarCountMapper.class);
 		job.setReducerClass(CarAggrReducer.class);
@@ -75,9 +87,85 @@ public class CombineSampleOfflineMR {
 		
 		FileInputFormat.setInputPaths(job, new Path(otherArgs[0]));
 		FileOutputFormat.setOutputPath(job, new Path(otherArgs[1]));
-		System.exit(job.waitForSampleCompletion() ? 0 : 1);
+		System.exit(job.waitForSampleCompletion() ? 0 : 1);*/
+		
+		Job.resetInputDataSet();
+		for (int deadline: deadlineList) {
+			for (int policy:  policyList) {
+				conf.set("mapred.sample.policy", String.valueOf(policy));
+				conf.set("mapred.deadline.second", String.valueOf(deadline));
+				
+				String suffix = "-" + deadline + "s-" + policy;
+				
+				// Reset StatsServer first! 
+				Job.resetStatsServer();
+				Job oneJob = new Job(conf, "vehicleCounting" + suffix);
+				
+				oneJob.setJarByClass(CombineSampleOfflineMR.class);
+				oneJob.setMapperClass(ImageCarCountMapper.class);
+				oneJob.setReducerClass(CarAggrReducer.class);
+				oneJob.setInputFormatClass(CombineSampleInputFormat.class);
+				oneJob.setOutputKeyClass(Text.class);
+				oneJob.setOutputValueClass(IntWritable.class);
+				
+				FileInputFormat.setInputPaths(oneJob, new Path(otherArgs[0]));
+				FileOutputFormat.setOutputPath(oneJob, new Path(otherArgs[1] + suffix));
+				oneJob.waitForSampleCompletion();
+				
+				Thread.sleep(1000);
+			}			
+		}
+		
+		/*conf.set("mapred.deadline.second", "90");
+		conf.set("mapred.sample.enableWhiteList", "false");	
+		ArrayList<String> whiteListStr = getWhiteList();	
+		for (int i = 0; i< whiteListStr.size(); i++) {
+			for (int policy:  policyList) {
+				conf.set("mapred.sample.whiteList", whiteListStr.get(i));
+				conf.set("mapred.sample.policy", String.valueOf(policy));
+				
+				String suffix = "-" + datasizeList[i] + "G-" + policy;
+				
+				// Reset StatsServer first! 
+				Job.resetStatsServer();
+				Job oneJob = new Job(conf, "vehicleCounting" + suffix);
+				
+				oneJob.setJarByClass(CombineSampleOfflineMR.class);
+				oneJob.setMapperClass(ImageCarCountMapper.class);
+				oneJob.setReducerClass(CarAggrReducer.class);
+				oneJob.setInputFormatClass(CombineSampleInputFormat.class);
+				oneJob.setOutputKeyClass(Text.class);
+				oneJob.setOutputValueClass(IntWritable.class);
+				
+				FileInputFormat.setInputPaths(oneJob, new Path(otherArgs[0]));
+				FileOutputFormat.setOutputPath(oneJob, new Path(otherArgs[1] + suffix));
+				oneJob.waitForSampleCompletion();
+				
+				Thread.sleep(1000);
+			}			
+		}*/
 	}
 	
+	public static ArrayList<String> getWhiteList() {
+		ArrayList<String> ret = new ArrayList<String>();
+		try {
+  		  BufferedReader br = new BufferedReader(new FileReader(whiteListFile));
+  		  String line;
+  		  while ((line = br.readLine()) != null) {
+  			  String sizeStr = line.substring(0, line.indexOf(","));
+  			  int size = Integer.parseInt(sizeStr);
+  			  if(ret.size() < datasizeList.length && size == datasizeList[ret.size()]) {
+  				  ret.add(line);
+  				  if (ret.size() == datasizeList.length) 
+  					  break;
+  			  }
+  		  }
+  		  br.close();
+		} catch (Exception ex) {
+			ex.printStackTrace();
+		}
+		return ret;
+	}
 	
 	public static class ImageCarCountMapper extends Mapper<Text, BytesWritable, Text, IntWritable>{
 		private CascadeClassifier car_cascade;
@@ -137,7 +225,7 @@ public class CombineSampleOfflineMR {
 					car_cascade.detectMultiScale( frame_gray, cars, 1.1, 2, 0, new Size(10, 10), new Size(800, 800) );
 					//System.out.println("detect: " + (System.currentTimeMillis()-s));
 					vehicleCount = vehicleCount + cars.height();
-					if ((System.currentTimeMillis()-s) > 700 || (System.currentTimeMillis()-s) < 100) {			
+					if ((System.currentTimeMillis()-s) > 1000 || (System.currentTimeMillis()-s) < 100) {			
 						String dump = frame_gray.dump();
 						System.out.println(dump);
 					}
@@ -147,8 +235,8 @@ public class CombineSampleOfflineMR {
 	    }
 		
 		private boolean isCorruptImg(Mat grayImg) {
-			return ((Core.norm(grayImg.row(grayImg.rows() - 1), grayImg.row(grayImg.rows() - 5)) == 0)
-					&& (Core.norm(grayImg.row(grayImg.rows() - 7), grayImg.row(grayImg.rows() - 11)) == 0))
+			return (Core.norm(grayImg.row(grayImg.rows() - 1), grayImg.row(grayImg.rows() - 5)) == 0)
+					|| (Core.norm(grayImg.row(grayImg.rows() - 3), grayImg.row(grayImg.rows() - 7)) == 0)
 					|| ((Core.norm(grayImg.row(grayImg.rows() - 50), grayImg.row(grayImg.rows() - 55)) == 0)
 						&& (Core.norm(grayImg.row(grayImg.rows() - 57), grayImg.row(grayImg.rows() - 61)) == 0))
 					|| ((Core.norm(grayImg.row(grayImg.rows() - 100), grayImg.row(grayImg.rows() - 105)) == 0)
@@ -182,16 +270,19 @@ public class CombineSampleOfflineMR {
 				valList.add(val.get());
 				count++;
 			}
-			avg = sum / (double) count;
+			if (count > 0)
+				avg = sum / (double) count;
 			for(Integer val: valList)
 			{
 				var += Math.pow(val - avg, 2);
 			}
-			var = var / (double) count;
+			if (count > 0)
+				var = var / (double) count;
 			//result.set(sum);
 			result.set(avg);
 			System.out.println(key +" avg = " + result.toString() + "  var = " + var
 					+ "  count = " + count);
+			System.out.println(valList.toArray(new Integer[0]));
 			
 			context.write(key, result, var, count);
 		}

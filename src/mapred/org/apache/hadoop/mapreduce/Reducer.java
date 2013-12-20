@@ -152,7 +152,7 @@ public class Reducer<KEYIN,VALUEIN,KEYOUT,VALUEOUT> {
     	final_vals.add(Double.parseDouble(value.toString()));
     	final_vars.add(var);
     	final_counts.add((double)count);
-    	LOG.info("reduce value = " + value.toString());
+    	//LOG.info("reduce value = " + value.toString());
 	}
     
     public void addTimeCost(long startTime, long timecost) {

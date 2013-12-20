@@ -75,7 +75,7 @@ public class Job extends JobContext {
   private RunningJob info;
   
   //EVStatsServer port (TODO: start a bunch of ports to handle concurrent connections?)
-  private int portEVStatsServer; 
+  private static int portEVStatsServer; 
   private static EVStatsServer evStatsServer;
 
   public Map<String, Double> sampledSize = new HashMap<String, Double>();
@@ -91,11 +91,11 @@ public class Job extends JobContext {
 	  if (evStatsServer == null) {
 	    // Start EVStatsServer
 	    Random rand = new Random();
-	    this.portEVStatsServer = 10593 + rand.nextInt(1000);
+	    portEVStatsServer = 10593 + rand.nextInt(1000);
 	    getConfiguration().setInt("mapred.evstats.serverport", portEVStatsServer);
-	    evStatsServer = new EVStatsServer(this.portEVStatsServer, this);
+	    evStatsServer = new EVStatsServer(portEVStatsServer, this);
 	    evStatsServer.start();	  
-	  }    
+	  }
   }
 
   public Job(Configuration conf, String jobName) throws IOException {
@@ -105,6 +105,17 @@ public class Job extends JobContext {
 
   JobClient getJobClient() {
     return jobClient;
+  }
+  
+  public static void resetStatsServer() {
+	  if (evStatsServer != null) {
+		  evStatsServer.stop();
+	  }
+	  evStatsServer = null;
+  }
+  
+  public static void resetInputDataSet() {
+	  MapFileSampleProc.resetWholeInputFileList();
   }
   
   private void ensureState(JobState state) throws IllegalStateException {
@@ -413,7 +424,7 @@ public class Job extends JobContext {
    * @throws IOException
    */
   public boolean isComplete() throws IOException {
-    ensureState(JobState.RUNNING);
+    ensureState(JobState.RUNNING);    
     return info.isComplete();
   }
 
@@ -670,7 +681,7 @@ public class Job extends JobContext {
   }
   
   public void clearEVStats() {
-	  LOG.info("Clear all EVStats!");
+	  LOG.debug("Clear all EVStats!");
 	  evStatsSet.clear();
 	  evStats.clear();
 	  reduceResults.clear();
@@ -683,7 +694,7 @@ public class Job extends JobContext {
    * @return Map<String, Stats>, e.g., <"16m_1", <avg=1.0, var=0.90>>, <"16m_1", <avg=2.0, var=4.90>>
    */
   public Map<String, Stats> processEVStats(){	  
-	  LOG.info("processEVStats");
+	  LOG.debug("processEVStats");
 	  long actualSize = 0;
 	  Map<String, Stats> tmp_stat = new HashMap<String, Stats>();
 	  Map<String, Stats> final_stat = new HashMap<String, Stats>();
@@ -732,8 +743,14 @@ public class Job extends JobContext {
     		  }
     	  }
       }
+      if (totalSize > 0)
+    	  avgTime = avgTime / totalSize;
       for (String key : final_stat.keySet()) {
     	  final_stat.get(key).computeAvg();
+    	  // For 0.0 Map timecost 
+    	  if (final_stat.get(key).getAvg() < 0.001) {
+    		  final_stat.get(key).setAvg(avgTime);
+    	  }
       }        
       /*// Compute time variance.
       for (EVStatistics evstat : evStatsSet) {
@@ -758,12 +775,17 @@ public class Job extends JobContext {
 		  for (int i = 0; i < count_list.size(); i++) {
 			  count += count_list.get(i);			  
 		  }
-		  for (int i = 0; i < val_list.size(); i++) {
-			  val += val_list.get(i) * count_list.get(i) / count; // weighted average value			  
+		  if (count > 0) {
+			  for (int i = 0; i < val_list.size(); i++) {
+				  val += val_list.get(i) * count_list.get(i) / count; // weighted average value			  
+			  }
+			  for (int i = 0; i < var_list.size(); i++) {
+				  var += var_list.get(i) * Math.pow(count_list.get(i) / count, 2); // weighted variance			  
+			  }		  
+		  } else {
+			  val = 0;
+			  var = 0;
 		  }
-		  for (int i = 0; i < var_list.size(); i++) {
-			  var += var_list.get(i) * Math.pow(count_list.get(i) / count, 2); // weighted variance			  
-		  }		  
 		  // update reduceResults
 		  val_list.clear();
 		  val_list.add(val);
@@ -774,7 +796,7 @@ public class Job extends JobContext {
 		  
 		  var_avg += var;
 		  var_avg_count++;
-		 // LOG.info("reduceResults.keySet: "+key+"\t"+var);
+		 // LOG.debug("reduceResults.keySet: "+key+"\t"+var);
 		  if (final_stat.containsKey(key)) {
 			  final_stat.get(key).setVar(var);
 			  final_stat.get(key).setCount((long) count);
@@ -791,12 +813,15 @@ public class Job extends JobContext {
       // Set variances of other non-existing keys 
       for (String key : final_stat.keySet()) {
     	  if (final_stat.get(key).getVar() < 0.0001) {
-    		  final_stat.get(key).setVar(var_avg);
+	    	  if (final_stat.get(key).getCount() < 2)
+	    		  final_stat.get(key).setVar(var_avg);
+	    	  else
+	    		  final_stat.get(key).setVar(0.01);
     	  }
       }
       
       for (String key : final_stat.keySet()) {
-    	  LOG.info("#########  " + key + "    avg(Time) = " + String.format("%.3f", final_stat.get(key).getAvg())
+    	  LOG.debug("#########  " + key + "    avg(Time) = " + String.format("%.3f", final_stat.get(key).getAvg())
     			  + "  var(Value) = " + String.format("%.3f", final_stat.get(key).getVar())
     			  + "  size = " + final_stat.get(key).getCount());
       }
@@ -822,13 +847,15 @@ public class Job extends JobContext {
       
       // Set evStats values.
       if(totalSize > 0) {
-    	  evStats.addAggreStat("time_per_record", String.valueOf(avgTime / totalSize));
+    	  evStats.addAggreStat("time_per_record", String.valueOf(avgTime));
     	  // We need actualSize rather than the size after removing outlier.
     	  evStats.addAggreStat("total_size", String.valueOf(actualSize));
-    	  evStats.addAggreStat("first_mapper_time", String.valueOf(firstMapperTime));
-    	  evStats.addAggreStat("last_mapper_time", String.valueOf(lastMapperTime));
+    	  if (firstMapperTime < Long.MAX_VALUE)
+    		  evStats.addAggreStat("first_mapper_time", String.valueOf(firstMapperTime));
+    	  if (lastMapperTime > Long.MIN_VALUE)
+    		  evStats.addAggreStat("last_mapper_time", String.valueOf(lastMapperTime));
     	  evStats.addAggreStat("avg_reducer_time", String.valueOf(avgReducerTime));
-    	  LOG.info("map_startTime = " + firstMapperTime + "  map_endTime = " + lastMapperTime
+    	  LOG.debug("map_startTime = " + firstMapperTime + "  map_endTime = " + lastMapperTime
     			  + "  " + "map_phase = " + (lastMapperTime - firstMapperTime) + 
     			  "ms  avgReducerTime = " + avgReducerTime + "ms");
       } else {
@@ -837,7 +864,7 @@ public class Job extends JobContext {
     	  evStats.addAggreStat("first_mapper_time", String.valueOf(0));
     	  evStats.addAggreStat("last_mapper_time", String.valueOf(lastMapperTime));
     	  evStats.addAggreStat("avg_reducer_time", String.valueOf(0));
-    	  LOG.info("firstMapperTime = " + 0 + "  lastMapperTime = " + 0 + "  " +
+    	  LOG.debug("firstMapperTime = " + 0 + "  lastMapperTime = " + 0 + "  " +
     			  "whole map phase = " + (0 - 0) + 
     			  "ms  avgReducerTime = " + 0 + "ms");
       }
@@ -856,7 +883,7 @@ public class Job extends JobContext {
 	  synchronized (reduceResults) {
 		  for (int i=0; i<final_keys.size(); i++) {		  
 			  String key = final_keys.get(i);
-			  /*LOG.info("addReduceResults: " + key
+			  /*LOG.debug("addReduceResults: " + key
 					  + "  val = " + final_val.get(i)
 					  + "  var = " + final_var.get(i)
 					  + "  size = " + final_count.get(i));*/
@@ -898,11 +925,13 @@ public class Job extends JobContext {
   
   public double[] processReduceResults(long n, long N, OpType op) {
 	  if (op == OpType.SUM) {
-		  LOG.info("processReduceResults: Sample Size = " + n + "  Total size = " + N);
+		  LOG.info("processReduceResults: Sample Size = " + n + " / " + N
+				  + "  reduceResults size = " + reduceResults.keySet().size());
 		  ArrayList<String> emptyKeys = new ArrayList<String>();
 		  ArrayList<String> nonEmptyKeys = new ArrayList<String>();
 		  double final_sum = 0;
 		  double final_var = 0;
+		  long total_num = 0;
 		  for (String key : reduceResults.keySet()) {
 			  ArrayList<ArrayList<Double>> lists = reduceResults.get(key);		
 			  ArrayList<Double> val_list = lists.get(0);
@@ -911,21 +940,35 @@ public class Job extends JobContext {
 			  double val = 0.0;
 			  double var = 0.0;
 			  double count = 0.0;
+			  String countStr = "";
 			  for (int i = 0; i < count_list.size(); i++) {
+				  countStr += count_list.get(i) + " ";
 				  count += count_list.get(i);			  
 			  }
-			  for (int i = 0; i < val_list.size(); i++) {
-				  double weight = count_list.get(i) / count;
-				  val += val_list.get(i) * weight;			  
+			  //LOG.info("Count: " + countStr);
+			  if (count > 0) {
+				  String valStr = "";
+				  for (int i = 0; i < val_list.size(); i++) {
+					  double weight = count_list.get(i) / count;
+					  val += val_list.get(i) * weight;			 
+					  valStr += val_list.get(i) + " ";
+				  }
+				  //LOG.info("Val: " + valStr);
+				  double val_2 = 0; // E(x^2)
+				  String varStr = "";
+				  for (int i = 0; i < var_list.size(); i++) {
+					  double weight = count_list.get(i) / count;
+					  // E(x^2) = var + (E(x))^2
+					  val_2 += weight * (var_list.get(i) + Math.pow(val_list.get(i), 2));
+					  varStr += var_list.get(i) + " ";
+				  }		
+				  //LOG.info("Var: " + varStr);
+				  // var = E(x^2) - (E(x))^2
+				  var = val_2 - Math.pow(val, 2);
+			  } else {
+				  val = 0;
+				  var = 0;
 			  }
-			  double val_2 = 0; // E(x^2)
-			  for (int i = 0; i < var_list.size(); i++) {
-				  double weight = count_list.get(i) / count;
-				  // E(x^2) = var + (E(x))^2
-				  val_2 += weight * (var_list.get(i) + Math.pow(val_list.get(i), 2));
-			  }		
-			  // var = E(x^2) - (E(x))^2
-			  var = val_2 - Math.pow(val, 2);
 			  // update reduceResults
 			  val_list.clear();
 			  val_list.add(val);
@@ -934,10 +977,10 @@ public class Job extends JobContext {
 			  count_list.clear();
 			  count_list.add(count);
 			  
-			  LOG.info("#########  " + key + "    val(Value) = " + String.format("%.3f", val)
+			  LOG.debug("#########  " + key + "    val(Value) = " + String.format("%.3f", val)
 					  + "  var(Value) = " + String.format("%.3f", var)
 					  + "  size = " + count);
-			  
+			  total_num += count;
 			  final_sum += val;
 			  final_var += var;			  			  
 			  if (val < 0.001) {
@@ -946,20 +989,7 @@ public class Job extends JobContext {
 				  nonEmptyKeys.add(key);
 			  }
 		  }
-		  // Clear reduce results of this round.
-		  //reduceResults.clear();
-		  if (this.getConfiguration().getBoolean("mapred.sample.printEmptyFolder", false)) {
-			  String nonEmptyKeysStr = "";
-			  for (String key : nonEmptyKeys) {
-				  nonEmptyKeysStr += key + "\n";
-			  }
-			  LOG.warn("Folder list with valid computing results:\n" + nonEmptyKeysStr);
-			  String emptyKeysStr = "";
-			  for (String key : emptyKeys) {
-				  emptyKeysStr += key + "\n";
-			  }
-			  LOG.warn("Folder list with ZERO computing results:\n" + emptyKeysStr);
-		  }
+		  LOG.info("#########  accumulatedSampleNum = " + total_num);
 		  // Normal distribution: 1.65 std err = 90%; 1.96 std err = 95%; 2.58 std err = 99%;
 		  double error = Math.sqrt(final_var) * 1.96; 
 		  // General distribution (Chebyshev's inequality): 

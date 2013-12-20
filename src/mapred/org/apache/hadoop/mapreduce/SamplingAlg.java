@@ -23,17 +23,18 @@ public class SamplingAlg {
 	 * Some image may be corrupted with invalid file size.
 	 */
 	public static boolean isValidFileSize(long size) {
-		if (size > 1000 && size < 150000)
-			return true;
-		else
+		if (size < 1000 ||  size > 200000) {
 			return false;
+		}
+		return true;
 	}
 	
-	private static long getTimeFromStats(String key, Map<String, Stats> distribution) {
+	private static long getTimeFromStats(String key, Map<String, Stats> distribution, Job originjob) {
 		if (distribution.containsKey(key)) {
 			return (long)(distribution.get(key).getAvg());
 		} else {
-			return 0;
+			long avgTimeCost = originjob.getConfiguration().getLong("mapred.sample.avgTimeCost", 300);
+			return avgTimeCost;
 		}
 	}
 	
@@ -98,14 +99,14 @@ public class SamplingAlg {
 				  sample_len += files.get(idx).size;
 				  String filepath = files.get(idx).file_path.toString();
 				  String keystr = filepath.substring(filepath.lastIndexOf("/")+1) + "/1";
-				  sample_time += getTimeFromStats(keystr, distribution);
+				  sample_time += getTimeFromStats(keystr, distribution, originjob);
 				  if (!sampledSize.containsKey(keystr))
 					  sampledSize.put(keystr, 1.0);
 				  else
 					  sampledSize.put(keystr, sampledSize.get(keystr) + 1);
 			}
 			else {
-				LOG.info("^^^^^^^^^^  length err: " + files.get(idx).sample_key + "  " + files.get(idx).size);
+				//LOG.debug("^^^^^^^^^^  length err: " + files.get(idx).sample_key + "  " + files.get(idx).size);
 			}
 			  
 		}
@@ -133,11 +134,11 @@ public class SamplingAlg {
 			folder+="/1";
 			
 			if (!isValidFileSize(files.get(idx).size)) {
-				LOG.info("^^^^^^^^^^  length err: " + files.get(idx).sample_key + "; " + files.get(idx).size);
-				  continue;				  
+				//LOG.debug("^^^^^^^^^^  length err: " + files.get(idx).sample_key + "; " + files.get(idx).size);
+				continue;				  
 			}
 			sample_len += files.get(idx).size;
-			sample_time += getTimeFromStats(folder, distribution);
+			sample_time += getTimeFromStats(folder, distribution, originjob);
 			res_list.add(fileRec);		
 			
 			if(distribution.get(folder)!=null)
@@ -152,7 +153,7 @@ public class SamplingAlg {
 			}
 		}
 		for (String key : sampledSize.keySet()) {
-			LOG.info("RandomSample-final: " + key + " " + sampledSize.get(key));
+			LOG.debug("RandomSample-final: " + key + " " + sampledSize.get(key));
 		}
 		return (new Long[]{sample_len, sample_time});
 	}
@@ -186,18 +187,37 @@ public class SamplingAlg {
 		}
 	    for (String key : distribution.keySet()) {
 			sizeProportion.put(key, num * distribution.get(key).getStd() / total_std);
-			LOG.info("RandomSample-Proportion: " + key + " " + sizeProportion.get(key));
+			//LOG.debug("RandomSample-Proportion: " + key + " " + sizeProportion.get(key));
 		}
-		int count = num;
-	    int failCount = 0;
-		Random rand = new Random(); // This must be outside the loop.
+		
 		Long sample_len = new Long(0);
 		Long sample_time = new Long(0);
-		String next_variable = ""; // The next should sampled variable by MH, x_i, e.g., camera-loc.
+		for (String key: sizeProportion.keySet()) {
+			long countFolder = Math.round(sizeProportion.get(key));
+			while(countFolder > 0) {
+				int idx = rand.nextInt(filereclist.get(key).size());
+				SamplePath fileRec = filereclist.get(key).get(idx);
+				String folder = fileRec.file_path.toString();	
+				folder = folder.substring(folder.lastIndexOf("/")+1);
+				folder+="/1";				
+				if (!isValidFileSize(fileRec.size)) {
+					//LOG.debug("^^^^^^^^^^  length err: " + files.get(idx).sample_key + "; " + files.get(idx).size);
+					continue;						  
+				}
+				countFolder--;
+				res_list.add(fileRec);
+				sampledSize.put(folder, sampledSize.get(folder) + 1);
+				sample_len += fileRec.size;
+				sample_time += getTimeFromStats(folder, distribution, originjob);
+			}
+		}
+		/*int count = num;
+	    int failCount = 0;
+	    String next_variable = ""; // The next should sampled variable by MH, x_i, e.g., camera-loc.
 		while(count > 0.99)
 		{
-			/*int idx = rand.nextInt(files.size());
-			SamplePath fileRec = files.get(idx);*/
+			int idx = rand.nextInt(files.size());
+			SamplePath fileRec = files.get(idx);
 			int idxFolder = rand.nextInt(keyList.size());
 			String folderKey = keyList.get(idxFolder);
 			if (sizeProportion.get(folderKey) < 1.0) {
@@ -217,8 +237,8 @@ public class SamplingAlg {
 				String cur_variable = folder; // For sequence file format.
 				if (next_variable.equals("") || next_variable.equals(cur_variable)) {					
 					if (!isValidFileSize(files.get(idx).size)) {
-						LOG.info("^^^^^^^^^^  length err: " + files.get(idx).sample_key + "; " + files.get(idx).size);
-						  continue;						  
+						//LOG.debug("^^^^^^^^^^  length err: " + files.get(idx).sample_key + "; " + files.get(idx).size);
+						continue;						  
 					}
 					res_list.add(fileRec);
 					sampledSize.put(cur_variable, sampledSize.get(cur_variable) + 1);
@@ -245,7 +265,7 @@ public class SamplingAlg {
 				for (String key : sizeProportion.keySet()) {
 					if (key.equals(folder) && sizeProportion.get(key) >= 1.0) {											  
 						if (!isValidFileSize(files.get(idx).size)) {
-							LOG.info("^^^^^^^^^^  length err: " + files.get(idx).sample_key + "; " + files.get(idx).size);
+							//LOG.debug("^^^^^^^^^^  length err: " + files.get(idx).sample_key + "; " + files.get(idx).size);
 						}
 						sample_len += files.get(idx).size;
 						sample_time += getTimeFromStats(key, distribution);
@@ -274,7 +294,7 @@ public class SamplingAlg {
 						 sample_time += getTimeFromStats(folder, distribution);
 					}
 					else
-						LOG.info("^^^^^^^^^^  length err: " + files.get(idx).sample_key + "; " + files.get(idx).size);
+						//LOG.debug("^^^^^^^^^^  length err: " + files.get(idx).sample_key + "; " + files.get(idx).size);
 					  
 					count--;
 					failCount = 0;
@@ -282,9 +302,9 @@ public class SamplingAlg {
 			} else if (failCount > 10 * num ) { // If failed too many times, just break.
 				  break;
 			}
-		}
+		}*/
 		for (String key : sampledSize.keySet()) {
-			LOG.info("RandomSample-final: " + key + " " + sampledSize.get(key));
+			LOG.debug("RandomSample-final: " + key + " " + sampledSize.get(key));
 		}
 		originjob.sampledSize.clear();
 		originjob.sampledSize = sampledSize;
@@ -337,20 +357,37 @@ public class SamplingAlg {
 			  // std / sqrt(timeCost)
 			  double std_by_time = distribution.get(key).getStd() / Math.sqrt(distribution.get(key).getAvg());	
 			  sizeProportion.put(key, std_by_time / toal_std_time * time_total);
-			  LOG.info("RandomSample-Proportion: " + key + " " + sizeProportion.get(key));
+			  //LOG.debug("RandomSample-Proportion: " + key + " " + sizeProportion.get(key));
 		  }
-			  
-		  //int count = num_total;
-		  int time = 0;
-		  int failCount = 0;
-		  Random rand = new Random(); // This must be outside the loop.
+		  
 		  Long sample_len = new Long(0);
 		  Long sample_time = new Long(0);
+		  for (String key: sizeProportion.keySet()) {
+			  long countFolder = Math.round(sizeProportion.get(key));
+				while(countFolder > 0) {
+					int idx = rand.nextInt(filereclist.get(key).size());
+					SamplePath fileRec = filereclist.get(key).get(idx);
+					String folder = fileRec.file_path.toString();	
+					folder = folder.substring(folder.lastIndexOf("/")+1);
+					folder+="/1";				
+					if (!isValidFileSize(fileRec.size)) {
+						//LOG.debug("^^^^^^^^^^  length err: " + files.get(idx).sample_key + "; " + files.get(idx).size);
+						continue;						  
+					}
+					countFolder--;
+					res_list.add(fileRec);
+					sampledSize.put(folder, sampledSize.get(folder) + 1);
+					sample_len += fileRec.size;
+					sample_time += getTimeFromStats(folder, distribution, originjob);
+				}
+			}
+		  /*int time = 0;
+		  int failCount = 0;
 		  String next_variable = ""; // The next should sampled variable by MH, x_i, e.g., camera-loc.
 		  while(time < time_total ) //&& count > 0.99
 		  {
-			  /*int idx = rand.nextInt(files.size());
-				SamplePath fileRec = files.get(idx);*/
+			  int idx = rand.nextInt(files.size());
+				SamplePath fileRec = files.get(idx);
 			  int idxFolder = rand.nextInt(keyList.size());
 			  String folderKey = keyList.get(idxFolder);
 			  if (sizeProportion.get(folderKey) < 1.0) {
@@ -376,7 +413,7 @@ public class SamplingAlg {
 						  sample_time += getTimeFromStats(cur_variable, distribution);
 					  }
 					  else
-						  LOG.info("^^^^^^^^^^  length err: " + files.get(idx).sample_key + "; " + files.get(idx).size);
+						 //LOG.debug("^^^^^^^^^^  length err: " + files.get(idx).sample_key + "; " + files.get(idx).size);
 					  time += distribution.get(cur_variable).getAvg(); // add the time cost for this variable
 					  //count--;
 					  isChosen = true;
@@ -403,7 +440,7 @@ public class SamplingAlg {
 							  sample_time += getTimeFromStats(key, distribution);
 						  }
 						  else
-							  LOG.info("^^^^^^^^^^  length err: " + files.get(idx).sample_key + "; " + files.get(idx).size);
+							  //LOG.debug("^^^^^^^^^^  length err: " + files.get(idx).sample_key + "; " + files.get(idx).size);
 						  
 						  time += distribution.get(cur_variable).getAvg(); // add the time cost for this variable
 						  //count--;
@@ -428,7 +465,7 @@ public class SamplingAlg {
 						  sample_time += getTimeFromStats(folder, distribution);
 					  }
 					  else
-						  LOG.info("^^^^^^^^^^  length err: " + files.get(idx).sample_key + "; " + files.get(idx).size);
+						  //LOG.debug("^^^^^^^^^^  length err: " + files.get(idx).sample_key + "; " + files.get(idx).size);
 					  
 					  time += distribution.get(folder).getAvg(); // add the time cost for this variable
 					  //count--;
@@ -437,9 +474,9 @@ public class SamplingAlg {
 			  } else if (failCount > 10 * time_total ) { // If failed too many times, just break.
 				  break;
 			  }
-		  }
+		  }*/
 		  for (String key : sampledSize.keySet()) {
-			  LOG.info("RandomSample-final: " + key + " " + sampledSize.get(key));
+			  LOG.debug("RandomSample-final: " + key + " " + sampledSize.get(key));
 		  }
 			originjob.sampledSize.clear();
 			originjob.sampledSize = sampledSize;
@@ -486,7 +523,7 @@ public class SamplingAlg {
 		for(String k : filereclist.keySet())
 		{
 			String folder = k;
-			//LOG.info("loc = " + loc);
+			//LOG.debug("loc = " + loc);
 			Stats newStats = originjob.evStats.new Stats();
 			newStats.setVar(1.0);
 			newStats.setAvg(0.0);
@@ -507,7 +544,7 @@ public class SamplingAlg {
 				kappa = total_time / (double) time_cost;
 		}
 		int num = (int) (numPerFolder * sizeProportion.size() * kappa); // sum = #folder * numPerFolder
-		LOG.info("time_cost = " + time_cost + "  total_time = " + total_time + "  kappa = " + kappa);
+		LOG.debug("time_cost = " + time_cost + "  total_time = " + total_time + "  kappa = " + kappa);
 		LOG.info("Next sampleNumber = " + num);
 		return RandomSampleWithDistribution(files, sizeProportion, num, false,
 				res_list, filereclist, originjob);

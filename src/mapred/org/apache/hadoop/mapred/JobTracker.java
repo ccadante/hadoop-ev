@@ -319,7 +319,7 @@ public class JobTracker implements MRConstants, InterTrackerProtocol,
         LOG.warn("Error starting tracker: " + 
                  StringUtils.stringifyException(e));
       }
-      Thread.sleep(1000);
+      Thread.sleep(300); // MaReV
     }
     if (result != null) {
       JobEndNotifier.startNotifier();
@@ -3476,6 +3476,7 @@ public class JobTracker implements MRConstants, InterTrackerProtocol,
                                       Math.ceil((double)clusterSize / 
                                                 NUM_HEARTBEATS_IN_SECOND)),
                                 HEARTBEAT_INTERVAL_MIN) ;
+    heartbeatInterval = 300; // MaReV
     return heartbeatInterval;
   }
 

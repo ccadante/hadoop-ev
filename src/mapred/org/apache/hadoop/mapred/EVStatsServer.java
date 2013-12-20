@@ -65,7 +65,7 @@ public class EVStatsServer implements Runnable {
 				ArrayList<Double> final_count = null;
 				ArrayList<Double> reducer_time = null;
 				ArrayList<Double> mapper_time = null;
-				//LOG.info("Statistics built, state = " + state + "; data size = " + data_size);
+				//LOG.debug("Statistics received: state = " + state + " (0-Mapper, 1-Reducer); data size = " + data_size);
 				if (state == 0) { // from Mapper
 					evStat = new EVStatistics();
 					mapper_time = new ArrayList<Double>();
@@ -112,13 +112,13 @@ public class EVStatsServer implements Runnable {
 //					closeHDFS();
 					//server.jobTracker.addEVStats(evStat);
 					server.job.addMapperTime(mapper_time);
-//					LOG.warn("Added EVStat(Map) into Job with size = " + evStat.getSize() +
-//							"  and one time = " + evStat.getFirstStat() + "  mapper_time = " + mapper_time + "ms");
+					//LOG.warn("Added EVStat(Map) into Job with size = " + evStat.getSize() +
+					//		"  and one time = " + evStat.getFirstStat() + "  mapper_time = " + mapper_time + "ms");
 				} else if (state == 1) {
 					server.job.addReduceResults(final_keys, final_val, final_var, final_count);
 					server.job.addReduceTime(reducer_time);
-//					LOG.warn("Added ReduceResult into Job with size = " + final_val.size() +
-//							" and one value = " + final_val.get(0) + "variance = " + final_var.get(0) + "  reducer_time = " + reducer_time + "ms");
+					//LOG.warn("Added ReduceResult into Job with size = " + final_val.size() +
+					//		" and one value = " + final_val.get(0) + "variance = " + final_var.get(0) + "  reducer_time = " + reducer_time + "ms");
 				}
 			}
 			catch (Exception e) {

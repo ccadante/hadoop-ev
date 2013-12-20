@@ -482,7 +482,7 @@ abstract public class Task implements Writable, Configurable {
                                           ) throws IOException;
 
   /** The number of milliseconds between progress reports. */
-  public static final int PROGRESS_INTERVAL = 3000;
+  public static final int PROGRESS_INTERVAL = 1000; // MaReV
 
   private transient Progress taskProgress = new Progress();
 
@@ -977,7 +977,7 @@ abstract public class Task implements Writable, Configurable {
       try {
         while (!umbilical.canCommit(taskId, jvmContext)) {
           try {
-            Thread.sleep(1000);
+            Thread.sleep(300); // MaReV
           } catch(InterruptedException ie) {
             //ignore
           }
