@@ -693,7 +693,7 @@ public class Job extends JobContext {
    * Currently, we aggregate data for each folder (i.e, camera location).
    * @return Map<String, Stats>, e.g., <"16m_1", <avg=1.0, var=0.90>>, <"16m_1", <avg=2.0, var=4.90>>
    */
-  public Map<String, Stats> processEVStats(){	  
+  public Map<String, Stats> processEVStats(boolean printResult){	  
 	  LOG.debug("processEVStats");
 	  long actualSize = 0;
 	  Map<String, Stats> tmp_stat = new HashMap<String, Stats>();
@@ -820,10 +820,12 @@ public class Job extends JobContext {
     	  }
       }
       
-      for (String key : final_stat.keySet()) {
-    	  LOG.debug("#########  " + key + "    avg(Time) = " + String.format("%.3f", final_stat.get(key).getAvg())
-    			  + "  var(Value) = " + String.format("%.3f", final_stat.get(key).getVar())
-    			  + "  size = " + final_stat.get(key).getCount());
+      if (printResult) {
+	      for (String key : final_stat.keySet()) {
+	    	  LOG.debug("#########  " + key + "    avg(Time) = " + String.format("%.3f", final_stat.get(key).getAvg())
+	    			  + "  var(Value) = " + String.format("%.3f", final_stat.get(key).getVar())
+	    			  + "  size = " + final_stat.get(key).getCount());
+	      }
       }
       
       // Process mapper_time and reducer_time
@@ -923,7 +925,7 @@ public class Job extends JobContext {
   
   public enum OpType {AVG, COUNT, SUM}
   
-  public double[] processReduceResults(long n, long N, OpType op) {
+  public double[] processReduceResults(long n, long N, OpType op, boolean printResult) {
 	  if (op == OpType.SUM) {
 		  LOG.info("processReduceResults: Sample Size = " + n + " / " + N
 				  + "  reduceResults size = " + reduceResults.keySet().size());
@@ -977,9 +979,11 @@ public class Job extends JobContext {
 			  count_list.clear();
 			  count_list.add(count);
 			  
-			  LOG.debug("#########  " + key + "    val(Value) = " + String.format("%.3f", val)
-					  + "  var(Value) = " + String.format("%.3f", var)
-					  + "  size = " + count);
+			  if (printResult) {
+				  LOG.debug("#########  " + key + "    val(Value) = " + String.format("%.3f", val)
+						  + "  var(Value) = " + String.format("%.3f", var)
+						  + "  size = " + count);
+			  }
 			  total_num += count;
 			  final_sum += val;
 			  final_var += var;			  			  
@@ -989,7 +993,7 @@ public class Job extends JobContext {
 				  nonEmptyKeys.add(key);
 			  }
 		  }
-		  LOG.info("#########  accumulatedSampleNum = " + total_num);
+		  LOG.info("#########  accumulatedValidSampleNum = " + total_num);
 		  // Normal distribution: 1.65 std err = 90%; 1.96 std err = 95%; 2.58 std err = 99%;
 		  double error = Math.sqrt(final_var) * 1.96; 
 		  // General distribution (Chebyshev's inequality): 

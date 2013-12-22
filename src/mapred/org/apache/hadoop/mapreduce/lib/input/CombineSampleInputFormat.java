@@ -183,11 +183,11 @@ public class CombineSampleInputFormat extends FileInputFormat<Text, BytesWritabl
     	
     	if (conf.getBoolean("mapred.input.fileinputformat.splitByTime", false)){ // By time
     		long maxTime = conf.getLong("mapred.input.fileinputformat.splitByTime.maxTime", 60000);
-    		LOG.info("splitByTime! maxTime = " + maxTime);
+    		LOG.debug("splitByTime! maxTime = " + maxTime);
     		getMoreSplits(job, myPaths.toArray(new SamplePath[myPaths.size()]), 
 	                    maxTime, splits);
     	} else { // By size
-    		LOG.info("splitBySize! maxSize = " + maxSize);
+    		LOG.debug("splitBySize! maxSize = " + maxSize);
 	    	getMoreSplits(job, myPaths.toArray(new SamplePath[myPaths.size()]), 
 	                    maxSize, minSizeNode, minSizeRack, splits);
     	}

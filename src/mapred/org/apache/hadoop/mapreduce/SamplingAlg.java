@@ -15,7 +15,7 @@ import org.apache.hadoop.mapreduce.lib.input.SamplePath;
 public class SamplingAlg {
 	public static final Log LOG = LogFactory.getLog(SamplingAlg.class);
 	
-	static Random rand = new Random();
+	final static Random rand = new Random();
 	
 	final static int K_0_1 = 200; // The value to let 1.96*Std/mean < 0.1 for normal distribution
 	
@@ -193,7 +193,7 @@ public class SamplingAlg {
 		Long sample_len = new Long(0);
 		Long sample_time = new Long(0);
 		for (String key: sizeProportion.keySet()) {
-			long countFolder = Math.round(sizeProportion.get(key));
+			long countFolder = Math.round(sizeProportion.get(key)) - 1;
 			while(countFolder > 0) {
 				int idx = rand.nextInt(filereclist.get(key).size());
 				SamplePath fileRec = filereclist.get(key).get(idx);
@@ -363,7 +363,7 @@ public class SamplingAlg {
 		  Long sample_len = new Long(0);
 		  Long sample_time = new Long(0);
 		  for (String key: sizeProportion.keySet()) {
-			  long countFolder = Math.round(sizeProportion.get(key));
+			  long countFolder = Math.round(sizeProportion.get(key)) - 1;
 				while(countFolder > 0) {
 					int idx = rand.nextInt(filereclist.get(key).size());
 					SamplePath fileRec = filereclist.get(key).get(idx);
@@ -509,7 +509,7 @@ public class SamplingAlg {
 			sizeProportion.put(folder, newStats); // average among directories.
 		}
 		int num = numPerFolder * sizeProportion.size(); // sum = #folder * numPerFolder.
-		LOG.info("Next sampleNumber = " + num);
+		LOG.debug("Next sampleNumber = " + num);
 		return RandomSampleWithDistribution(files, sizeProportion, num, false,
 				res_list, filereclist, originjob);
 	}
@@ -545,7 +545,7 @@ public class SamplingAlg {
 		}
 		int num = (int) (numPerFolder * sizeProportion.size() * kappa); // sum = #folder * numPerFolder
 		LOG.debug("time_cost = " + time_cost + "  total_time = " + total_time + "  kappa = " + kappa);
-		LOG.info("Next sampleNumber = " + num);
+		LOG.debug("Next sampleNumber = " + num);
 		return RandomSampleWithDistribution(files, sizeProportion, num, false,
 				res_list, filereclist, originjob);
 	}

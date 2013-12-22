@@ -43,20 +43,21 @@ import org.opencv.utils.Converters;
 
 public class CombineSampleOfflineMR {
 	final static String whiteListFile = "/home/temp/Projects/hadoop-ev/conf/dataWhiteList";
-	final static int[] datasizeList = {400};
-	final static int[] deadlineList = {30, 40, 50};
-	final static int[] policyList = {0, 1, 2};
+	final static int[] datasizeList = {500};
+	final static int[] deadlineList = {19, 20};
+	final static int[] policyList = {0, 1};
 	
 	public static void main(String[] args) throws IOException, URISyntaxException, ClassNotFoundException, InterruptedException, InstantiationException, IllegalAccessException, CloneNotSupportedException {
 		Configuration conf = new Configuration();
 		conf.set("mapreduce.input.fileinputformat.split.maxsize", "33558864");
-		conf.set("mapred.sample.experimentCount", "7");
+		conf.set("mapred.sample.experimentCount", "30");
 		
 		// Policy: 0: MaReV  1: uniform (proportion to folder)  2: same size per folder
 		conf.set("mapred.sample.policy", "0");
 		conf.set("mapred.deadline.second", "90");
-		conf.set("mapred.sample.sizePerFolder", "10");
+		conf.set("mapred.sample.sizePerFolder", "7");
 		conf.set("mapred.sample.sampleTimePctg", "0.2");
+		conf.set("mapred.sample.splitsCoeff", "1.5");
 		conf.set("mapred.filter.startTimeOfDay", "7");
 		conf.set("mapred.filter.endTimeOfDay", "20");
 		conf.set("mapred.sample.groundTruth", "false");
@@ -112,7 +113,7 @@ public class CombineSampleOfflineMR {
 				FileOutputFormat.setOutputPath(oneJob, new Path(otherArgs[1] + suffix));
 				oneJob.waitForSampleCompletion();
 				
-				Thread.sleep(1000);
+				Thread.sleep(5000);
 			}			
 		}
 		
@@ -144,6 +145,8 @@ public class CombineSampleOfflineMR {
 				Thread.sleep(1000);
 			}			
 		}*/
+		
+		System.exit(0);
 	}
 	
 	public static ArrayList<String> getWhiteList() {
@@ -262,12 +265,14 @@ public class CombineSampleOfflineMR {
 			double var = 0.0;
 			double avg = 0.0;
 			ArrayList<Integer> valList = new ArrayList<Integer>();
+			String valStr = "";
 			for(IntWritable val:values)
 			{
 				if (val.get() < 0)
 					continue;
 				sum += val.get();
 				valList.add(val.get());
+				valStr += val.get() + " ";
 				count++;
 			}
 			if (count > 0)
@@ -276,13 +281,15 @@ public class CombineSampleOfflineMR {
 			{
 				var += Math.pow(val - avg, 2);
 			}
-			if (count > 0)
-				var = var / (double) count;
+			if (count > 0) {
+				var = var / (double) count; // variance of original variable, x
+				var = var / (double) count; // variance of mean(x) by count observations
+			}
 			//result.set(sum);
 			result.set(avg);
 			System.out.println(key +" avg = " + result.toString() + "  var = " + var
 					+ "  count = " + count);
-			System.out.println(valList.toArray(new Integer[0]));
+			System.out.println(valStr);
 			
 			context.write(key, result, var, count);
 		}
