@@ -10,6 +10,8 @@ import java.util.HashMap;
 import java.util.Hashtable;
 import java.util.List;
 
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.hadoop.fs.FSDataOutputStream;
@@ -27,9 +29,9 @@ import org.apache.hadoop.mapreduce.lib.input.TextInputFormat;
 import org.apache.hadoop.mapreduce.Mapper.Context;
 import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
-import org.mortbay.log.Log;
 
 public class CacheJob {
+	public static final Log LOG = LogFactory.getLog(CacheJob.class);
 	
 	public Job cachejob;
 	private int seqmode;
@@ -111,7 +113,7 @@ public class CacheJob {
 		int max_mapnum = jobconf.getInt("mapred.tasktracker.map.tasks.maximum", 2);
 		int max_slotnum = datanode_num*max_mapnum;
 		if (max_slotnum <= 0) {
-			Log.info("Can not read number of slots!  datanode_num=" + datanode_num +
+			LOG.info("Can not read number of slots!  datanode_num=" + datanode_num +
 				  " max_mapnum=" + max_mapnum);
 			return;
 		}
@@ -128,7 +130,7 @@ public class CacheJob {
 						cache_prefix + "/inputfilelist"));
 		
 		int prelen = jobconf.get("fs.default.name").length();
-		Log.info("seqmode = " + seqmode); 
+		LOG.info("seqmode = " + seqmode); 
 		for (String fs : fslist)
 		{
 			String line = ((seqmode == 0 ) ? fs.substring(prelen) : fs) + "\n";
@@ -139,7 +141,7 @@ public class CacheJob {
 		/* Calculate the files size in Byte */
 		long input_len = hdfs.getContentSummary(new Path(cache_prefix + "/inputfilelist")).getLength();
 		Long splitsize = input_len/max_slotnum;
-		Log.info("Inputfilelist Length = " + input_len + "; Slot Num = " + max_slotnum + "; Split Size = " + splitsize);
+		LOG.info("Inputfilelist Length = " + input_len + "; Slot Num = " + max_slotnum + "; Split Size = " + splitsize);
 		
 		/* create the cache job */
 		JobConf cacheconf = new JobConf();
@@ -148,7 +150,7 @@ public class CacheJob {
 		cacheconf.setInt("mapred.evstats.serverport", jobconf.getInt("mapred.evstats.serverport", 0));
 		
 		cachejob = new Job(cacheconf, job.getJobName() + "cache job");
-		Log.info("JAR NAME: " + jobconf.getJar());
+		LOG.info("JAR NAME: " + jobconf.getJar());
 		cachejob.setMapperClass(CacheJobMapper.class);
 		cachejob.setReducerClass(job.getReducerClass());
 		cachejob.setInputFormatClass(TextInputFormat.class);
@@ -167,11 +169,11 @@ public class CacheJob {
 		FileSystem hdfs = FileSystem.get(cachejob.getConfiguration());
 		String cache_prefix = cachejob.getConfiguration().get("fs.default.name") + "/cache";
 		if (cachejob == null)
-			Log.info("cache job null");
+			LOG.info("cache job null");
 		else
 		{
 			cachejob.waitForCompletion(true);
-			Log.info("REDCLASS: " + cachejob.getReducerClass().toString());
+			LOG.info("REDCLASS: " + cachejob.getReducerClass().toString());
 			if(hdfs.exists(new Path(cache_prefix + "/inputfilelist")))
 				hdfs.delete(new Path(cache_prefix + "/inputfilelist"), true);
 		}
@@ -187,7 +189,7 @@ public class CacheJob {
 			FileSystem hdfs = FileSystem.get(jobconf);
 			String cache_prefix = "/cache";
 			FileStatus cachefiles[] = hdfs.listStatus(new Path(cache_prefix));
-			Log.info("Cache files number = " + cachefiles.length);
+			LOG.info("Cache files number = " + cachefiles.length);
 			for(int i = 0; i< cachefiles.length; i++)
 			{
 				Path cachefile = cachefiles[i].getPath();

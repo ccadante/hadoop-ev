@@ -216,15 +216,16 @@ public class Reducer<KEYIN,VALUEIN,KEYOUT,VALUEOUT> {
    * control how the reduce task works.
    */
   public void run(Context context) throws IOException, InterruptedException {
-	  long t1 = System.currentTimeMillis();
-    setup(context);
+	int enableStats = context.getConfiguration().getInt("mapred.evstatistic.enable", 1);
+	long t1 = System.currentTimeMillis();
+    setup(context);    
     while (context.nextKey()) {
     	//LOG.info("reducer running: " + context.getCurrentKey().toString());
       reduce(context.getCurrentKey(), context.getValues(), context);
-    }
-    cleanup(context);
+    }    
+    cleanup(context);    
     long t2 = System.currentTimeMillis();
-    if (context.getConfiguration().getInt("mapred.evstatistic.enable", 1) == 1)
+    if (enableStats == 1)
     {
     	context.addTimeCost(t1, t2 - t1); // In milliseconds
     }

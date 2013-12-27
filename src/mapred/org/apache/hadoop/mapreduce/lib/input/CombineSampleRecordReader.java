@@ -33,7 +33,7 @@ public class CombineSampleRecordReader extends RecordReader<Text, BytesWritable>
 	
 	private final Text currKey = new Text();
 	private final BytesWritable currValue = new BytesWritable();
-	private boolean fileProcessed = false;
+	//private boolean fileProcessed = false;
 	private FileSystem fs;
 	
 	private ArrayList<ReaderPathPair> readerpathlist = new ArrayList<ReaderPathPair>();
@@ -77,7 +77,7 @@ public class CombineSampleRecordReader extends RecordReader<Text, BytesWritable>
 	public boolean nextKeyValue() throws IOException, InterruptedException
 	{
 		//LOG.info("$$$$$ split path number = " + split.getNumPaths() + "; index = " + index);
-		if (fileProcessed || index==split.getNumPaths())
+		if (index == split.getNumPaths())
 		{
 			return false;
 		}
@@ -85,14 +85,12 @@ public class CombineSampleRecordReader extends RecordReader<Text, BytesWritable>
 		SamplePath path = split.getPath(index);
 		Path mapFilePath = path.file_path;
 		String sampleKey = path.sample_key;
-		long fileLength = path.size;		
-
+		//long fileLength = path.size;		
+		
 		MapFile.Reader mfreader = getMapFileReader(mapFilePath.toString());
 		BytesWritable value = new BytesWritable();
 		mfreader.get(new Text(sampleKey), value);
 		
-		if (!isValidDataSize(fileLength))
-			return false;
 		currKey.set(sampleKey);
 		currValue.set(value.getBytes(), 0, (int) value.getLength() );
 		index++;

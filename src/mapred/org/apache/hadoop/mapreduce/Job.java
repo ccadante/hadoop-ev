@@ -808,7 +808,7 @@ public class Job extends JobContext {
       }
       // To avoid 0.0 variance.
       if (var_avg < 0.0001){
-    	  var_avg = 0.01;
+    	  var_avg = 0.0001;
       }
       // Set variances of other non-existing keys 
       for (String key : final_stat.keySet()) {
@@ -816,7 +816,7 @@ public class Job extends JobContext {
 	    	  if (final_stat.get(key).getCount() < 2)
 	    		  final_stat.get(key).setVar(var_avg);
 	    	  else
-	    		  final_stat.get(key).setVar(0.01);
+	    		  final_stat.get(key).setVar(0.0001);
     	  }
       }
       
@@ -842,7 +842,7 @@ public class Job extends JobContext {
       if (reducerTimes.size() > 0)
     	  avgReducerTime = avgReducerTime / reducerTimes.size();
       else
-    	  LOG.error("Invalid reducerTimes (probably also mapperTimes)!");
+    	  LOG.debug("Invalid reducerTimes (probably also mapperTimes)!");
       // Do remember to clear mapperTimes and reducerTimes every time!
       mapperTimes.clear();
       reducerTimes.clear();

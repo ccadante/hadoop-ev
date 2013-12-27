@@ -16,7 +16,9 @@ import org.apache.hadoop.io.*;
 import org.apache.hadoop.mapreduce.EVStatistics;
 import org.apache.hadoop.mapreduce.InputSplit;
 import org.apache.hadoop.mapreduce.JobContext;
+import org.apache.hadoop.mapreduce.MapFileSampleProc;
 import org.apache.hadoop.mapreduce.RecordReader;
+import org.apache.hadoop.mapreduce.SamplingAlg;
 import org.apache.hadoop.mapreduce.TaskAttemptContext;
 import org.apache.hadoop.mapreduce.lib.input.CombineFileRecordReader;
 import org.apache.hadoop.mapreduce.lib.input.CombineFileSplit;
@@ -238,10 +240,7 @@ public class CombineSampleInputFormat extends FileInputFormat<Text, BytesWritabl
 	 * @return
 	 */
 	private boolean isValidDataSize(long length) {
-		if (length < 1000 || length > 200000) {
-			return false;
-		}
-		return true;
+		return MapFileSampleProc.isValidDataSize(length);
 	}
 	
 	private void getMoreSplits(JobContext job, SamplePath[] paths,
@@ -256,13 +255,19 @@ public class CombineSampleInputFormat extends FileInputFormat<Text, BytesWritabl
 	    long curSplitTime = 0;
 	    long avgTimeCost = conf.getLong("mapred.sample.avgTimeCost", 300);
 	    long totalTimeCost = 0;
+	    String curFolder = "";
 	    for (SamplePath sp : paths) {
 	    	if(!isValidDataSize(sp.size))
 	    		continue;
 	    	validPaths.add(sp);
-	    	String keyName = "mapred.input.fileinputformat.splitByTime."
-	    		+ sp.sample_key.substring(0, sp.sample_key.lastIndexOf("/"));
+	    	String folder = sp.sample_key.substring(0, sp.sample_key.lastIndexOf("/"));
+	    	String keyName = "mapred.input.fileinputformat.splitByTime." +  folder;
 	    	long cost = conf.getLong(keyName, avgTimeCost);
+	    	cost += SamplingAlg.TIME_FILE_LOAD;
+	    	if (!folder.equals(curFolder)) {
+	    		curFolder = folder;
+	    		cost += SamplingAlg.TIME_FILE_LOAD_FIRST;
+	    	}
 	    	curSplitTime += cost;
 	    	totalTimeCost += cost;
 	    	/*if (cost == avgTimeCost) {

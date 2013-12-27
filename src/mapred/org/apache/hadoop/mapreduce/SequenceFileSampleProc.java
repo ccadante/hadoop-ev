@@ -119,7 +119,7 @@ public class SequenceFileSampleProc {
 		long deadline = System.currentTimeMillis() + timeConstraint * 1000; // in millisecond
 		long timer = System.currentTimeMillis();
 		long N = files.size(); // Total input records size.		
-		while(System.currentTimeMillis() < deadline)
+		/*while(System.currentTimeMillis() < deadline)
 		{		
 			runCount++;
 			LOG.info("*** Sampling Round - " + runCount + " ***");
@@ -201,10 +201,10 @@ public class SequenceFileSampleProc {
 				break;
 			}
 			
-			/*if (distribution != null)
+			if (distribution != null)
 				sample_len = RandomSampleWithDistribution(files, distribution, nextSize, true, inputfiles);	
 			else
-				sample_len = RandomSampleWithDirs(files, nextSize, inputfiles);*/
+				sample_len = RandomSampleWithDirs(files, nextSize, inputfiles);
 			Long splitsize = all_input_len/max_slotnum;
 			LOG.info("max slot number = " + max_slotnum + "; split size = " + splitsize);
 			
@@ -216,26 +216,26 @@ public class SequenceFileSampleProc {
 			FileOutputFormat.setOutputPath(newjob, 
 					new Path(originjob.getConfiguration().get(("mapred.output.dir")) + "_" + runCount));
 			
-			/* set input filter */
+			 set input filter 
 			List<String> inputstrs = new ArrayList<String>();
 			for (SequenceFileRecord sfr : inputfiles)
 				inputstrs.add(sfr.getCacheKey());
 			SequenceFileInputFilter.ListFilter.setListFilter(newjob.getConfiguration(), inputstrs);
 			
 			// all input files are included in newjob
-			/*
+			
 			FileInputFormat.setInputPaths(newjob, new Path(inputfiles.get(0)));
 			for (int j=1; j<inputfiles.size(); j++)
 			{
 				FileInputFormat.addInputPath(newjob, new Path(inputfiles.get(j)));
 			}
-			*/
+			
 			newjob.waitForCompletion(true);
 			  
 			double[] results = originjob.processReduceResults(inputfiles.size(), N, OpType.SUM);
 			LOG.info("RESULT ESTIMATION: sum(avg(Loc)) = " + results[0] + "+-" + results[1] + 
 					  " (95% confidence).\n");
-		}
+		}*/
 		long timeDiff = System.currentTimeMillis() - deadline;
 		if (timeDiff >= 0)
 			LOG.info("After deadline: " + Math.abs(timeDiff) + "ms");
@@ -246,18 +246,18 @@ public class SequenceFileSampleProc {
 	}
 	
 	
-	public boolean startWithErrorContraint() throws IOException, InterruptedException, ClassNotFoundException
+	/*public boolean startWithErrorContraint() throws IOException, InterruptedException, ClassNotFoundException
 	{
 		// Clear any pre-existing stats, for example, from Caching setup job.
 		originjob.clearEVStats();
 		int runCount = 0;
 		long timer = System.currentTimeMillis();
 		
-		/* start cache job first */
+		 start cache job first 
 //		CacheJob cachejob = new CacheJob(originjob, keyreclist);
 //		cachejob.Start();
 		
-		/* loop until deadline */
+		 loop until deadline 
 		List<SequenceFileRecord> files = GetWholeFileRecordList();
 		long N = files.size(); // Total input records size.		
 		double error = Double.MAX_VALUE;
@@ -340,10 +340,10 @@ public class SequenceFileSampleProc {
 				break;
 			}
 			
-			/*if (distribution != null)
+			if (distribution != null)
 				sample_len = RandomSampleWithDistribution(files, distribution, nextSize, true, inputfiles);	
 			else
-				sample_len = RandomSampleWithDirs(files, nextSize, inputfiles);*/
+				sample_len = RandomSampleWithDirs(files, nextSize, inputfiles);
 			Long splitsize = all_input_len/max_slotnum;
 			LOG.info("max slot number = " + max_slotnum + "; split size = " + splitsize);
 			
@@ -355,20 +355,20 @@ public class SequenceFileSampleProc {
 			FileOutputFormat.setOutputPath(newjob, 
 					new Path(originjob.getConfiguration().get(("mapred.output.dir")) + "_" + runCount));
 			
-			/* set input filter */
+			 set input filter 
 			List<String> inputstrs = new ArrayList<String>();
 			for (SequenceFileRecord sfr : inputfiles)
 				inputstrs.add(sfr.getCacheKey());
 			SequenceFileInputFilter.ListFilter.setListFilter(newjob.getConfiguration(), inputstrs);
 			
 			// all input files are included in newjob
-			/*
+			
 			FileInputFormat.setInputPaths(newjob, new Path(inputfiles.get(0)));
 			for (int j=1; j<inputfiles.size(); j++)
 			{
 				FileInputFormat.addInputPath(newjob, new Path(inputfiles.get(j)));
 			}
-			*/
+			
 			newjob.waitForCompletion(true);
 			  
 			double[] results = originjob.processReduceResults(inputfiles.size(), N, OpType.SUM);
@@ -381,7 +381,7 @@ public class SequenceFileSampleProc {
 		
 		return true;
 	}
-	
+	*/
 	// We adjust the distribution by adding every variance with the (max_var + min_var) / 2.0. 
 		// This is to average the distribution a bit since we do not trust it completely. 
 		  @SuppressWarnings("unused")

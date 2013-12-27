@@ -199,8 +199,10 @@ public class Mapper<KEYIN, VALUEIN, KEYOUT, VALUEOUT> {
    * @throws IOException
    */
   public void run(Context context) throws IOException, InterruptedException {
-	  long t0 = System.currentTimeMillis();
-    setup(context);
+	  int enableStats = context.getConfiguration().getInt("mapred.evstatistic.enable", 1);
+	long t0 = System.currentTimeMillis();
+    setup(context);    
+    long t_cur = System.currentTimeMillis();
     while (context.nextKeyValue()) {
       /* cache begin*/
       /*
@@ -219,7 +221,7 @@ public class Mapper<KEYIN, VALUEIN, KEYOUT, VALUEOUT> {
 	      map(context.getCurrentKey(), context.getCurrentValue(), context);
 	      String value = context.getLastValueOut().toString();
 	      long t2 = System.nanoTime();
-	      if (context.getConfiguration().getInt("mapred.evstatistic.enable", 1) == 1)
+	      if (enableStats == 1)
 	      {
 	    	  if (value.equals("-1")) {
 	    		  //LOG.info("Found invalid Map outut value -1");
@@ -228,9 +230,12 @@ public class Mapper<KEYIN, VALUEIN, KEYOUT, VALUEOUT> {
 	    	  context.addStat((t2 - t1)/1000); // in microsecond
 //	    	  context.addCache();
 	      }
+	      LOG.info(context.getCurrentKey().toString() + "  "
+	    		  + (System.currentTimeMillis() - t_cur) + "ms");
+	      t_cur = System.currentTimeMillis();
 //      }
-    }    
-    cleanup(context);
+    }       
+    cleanup(context);    
     long t3 = System.currentTimeMillis();
     if (context.getConfiguration().getInt("mapred.evstatistic.enable", 1) == 1)
     {

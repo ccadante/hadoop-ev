@@ -18,15 +18,14 @@ public class SamplingAlg {
 	final static Random rand = new Random();
 	
 	final static int K_0_1 = 200; // The value to let 1.96*Std/mean < 0.1 for normal distribution
+	final public static int TIME_FILE_LOAD_FIRST = 1500;
+	final public static int TIME_FILE_LOAD = 20;
 	
 	/**
 	 * Some image may be corrupted with invalid file size.
 	 */
 	public static boolean isValidFileSize(long size) {
-		if (size < 1000 ||  size > 200000) {
-			return false;
-		}
-		return true;
+		return MapFileSampleProc.isValidDataSize(size);
 	}
 	
 	private static long getTimeFromStats(String key, Map<String, Stats> distribution, Job originjob) {
@@ -82,15 +81,33 @@ public class SamplingAlg {
 	 * @param re_list
 	 * @return the size in Bytes of all files in res_list
 	 */
-	public static Long[] RandomSample(List<SamplePath> files, Map<String, Stats> distribution,
-			int num, List<SamplePath> res_list, Job originjob)
+	public static Long[] randomSampleByNum(List<SamplePath> files, Map<String, Stats> distribution,
+			int num, List<SamplePath> res_list,
+			Hashtable<String, List<SamplePath>> filereclist, Job originjob)
 	{
-		Map<String, Double> sampledSize = new HashMap<String, Double>();
 		if (num > files.size())
 			num = files.size();
 		Long sample_len = new Long(0);
 		Long sample_time = new Long(0);
-		for(int i=0; i<num; i++)
+		// Record the number of actual samples.
+		Map<String, Double> sampledSize = new HashMap<String, Double>();
+		for (String key : filereclist.keySet()) {
+			sampledSize.put(key, 0.0);
+		}
+		// Guarantee at least 1 sample per folder
+		for (String key : filereclist.keySet()){
+			int idx = rand.nextInt(filereclist.get(key).size());
+			SamplePath fileRec = filereclist.get(key).get(idx);
+			String folder = fileRec.file_path.toString();	
+			folder = folder.substring(folder.lastIndexOf("/")+1);
+			folder+="/1";		
+			res_list.add(fileRec);
+			sampledSize.put(folder, sampledSize.get(folder) + 1);
+			sample_len += fileRec.size;
+			sample_time += getTimeFromStats(folder, distribution, originjob) + TIME_FILE_LOAD;
+			sample_time += TIME_FILE_LOAD_FIRST;
+		}
+		for(int i=filereclist.size(); i<num; i++)
 		{
 			int idx = rand.nextInt(files.size()-1);
 			res_list.add(files.get(idx));
@@ -110,24 +127,92 @@ public class SamplingAlg {
 			}
 			  
 		}
+		for (String key : sampledSize.keySet()) {
+			LOG.debug("RandomSample-final: " + key + " " + sampledSize.get(key));
+		}
 		originjob.sampledSize.clear();
 		originjob.sampledSize = sampledSize;
 		return (new Long[]{sample_len, sample_time});
 	}
 	
-	public static Long[] RandomSampleByTime(List<SamplePath> files, Map<String, Stats> distribution,
-			long time_total, long avg_time_cost, List<SamplePath> res_list, Job originjob)
+	public static Long[] randomSampleByTime(List<SamplePath> files, Map<String, Stats> distribution,
+			long time_total, long avg_time_cost, List<SamplePath> res_list,
+			Hashtable<String, List<SamplePath>> filereclist, Job originjob)
 	{
 		Long sample_len = new Long(0);
 		Long sample_time = new Long(0);
-		long t = 0;
 		// Record the number of actual samples.
 		Map<String, Double> sampledSize = new HashMap<String, Double>();
-		for (String key : distribution.keySet()) {
+		for (String key : filereclist.keySet()) {
 			sampledSize.put(key, 0.0);
 		}
-		while (t < time_total){
-			int idx = rand.nextInt(files.size()-1);			
+		// Guarantee at least 1 sample per folder
+		for (String key : filereclist.keySet()){
+			int idx = rand.nextInt(filereclist.get(key).size());
+			SamplePath fileRec = filereclist.get(key).get(idx);
+			String folder = fileRec.file_path.toString();	
+			folder = folder.substring(folder.lastIndexOf("/")+1);
+			folder+="/1";		
+			res_list.add(fileRec);
+			sampledSize.put(folder, sampledSize.get(folder) + 1);
+			sample_len += fileRec.size;
+			sample_time += getTimeFromStats(folder, distribution, originjob) + TIME_FILE_LOAD;
+			sample_time += TIME_FILE_LOAD_FIRST;
+		}
+		while (sample_time < time_total){
+			int idx = rand.nextInt(files.size());			
+			SamplePath fileRec = files.get(idx);
+			String folder = fileRec.file_path.toString();
+			folder = folder.substring(folder.lastIndexOf("/")+1);
+			folder+="/1";
+			
+			if (!isValidFileSize(files.get(idx).size)) {
+				//LOG.debug("^^^^^^^^^^  length err: " + files.get(idx).sample_key + "; " + files.get(idx).size);
+				continue;				  
+			}
+			sample_len += files.get(idx).size;
+			sample_time += getTimeFromStats(folder, distribution, originjob) + TIME_FILE_LOAD;
+			res_list.add(fileRec);		
+			
+			if(distribution.get(folder)!=null)
+				sampledSize.put(folder, sampledSize.get(folder) + 1);
+			else
+				sampledSize.put(folder, 1.0);
+		}
+		for (String key : sampledSize.keySet()) {
+			LOG.debug("RandomSample-final: " + key + " " + sampledSize.get(key));
+		}
+		originjob.sampledSize.clear();
+		originjob.sampledSize = sampledSize;
+		return (new Long[]{sample_len, sample_time});
+	}
+	
+	public static Long[] randomSampleBySize(List<SamplePath> files, Map<String, Stats> distribution,
+			long length_total, List<SamplePath> res_list,
+			Hashtable<String, List<SamplePath>> filereclist, Job originjob)
+	{
+		Long sample_len = new Long(0);
+		Long sample_time = new Long(0);
+		// Record the number of actual samples.
+		Map<String, Double> sampledSize = new HashMap<String, Double>();
+		for (String key : filereclist.keySet()) {
+			sampledSize.put(key, 0.0);
+		}
+		// Guarantee at least 1 sample per folder
+		for (String key : filereclist.keySet()){
+			int idx = rand.nextInt(filereclist.get(key).size());
+			SamplePath fileRec = filereclist.get(key).get(idx);
+			String folder = fileRec.file_path.toString();	
+			folder = folder.substring(folder.lastIndexOf("/")+1);
+			folder+="/1";		
+			res_list.add(fileRec);
+			sampledSize.put(folder, sampledSize.get(folder) + 1);
+			sample_len += fileRec.size;
+			sample_time += getTimeFromStats(folder, distribution, originjob) + TIME_FILE_LOAD;
+			sample_time += TIME_FILE_LOAD_FIRST;
+		}
+		while (sample_len < length_total){
+			int idx = rand.nextInt(files.size());			
 			SamplePath fileRec = files.get(idx);
 			String folder = fileRec.file_path.toString();
 			folder = folder.substring(folder.lastIndexOf("/")+1);
@@ -144,17 +229,17 @@ public class SamplingAlg {
 			if(distribution.get(folder)!=null)
 			{
 				sampledSize.put(folder, sampledSize.get(folder) + 1);
-				t += distribution.get(folder).getAvg(); // add the time cost for this variable
 			}
 			else
 			{
 				sampledSize.put(folder, 1.0);
-				t += avg_time_cost;
 			}
 		}
 		for (String key : sampledSize.keySet()) {
 			LOG.debug("RandomSample-final: " + key + " " + sampledSize.get(key));
 		}
+		originjob.sampledSize.clear();
+		originjob.sampledSize = sampledSize;
 		return (new Long[]{sample_len, sample_time});
 	}
 	
@@ -163,13 +248,13 @@ public class SamplingAlg {
 	 * Get file list based on the proportion of different dimensions (i.e., location).
 	 * @return
 	 */
-	public static Long[] RandomSampleWithDistribution(List<SamplePath> files,
+	public static Long[] sampleWithDistribution(List<SamplePath> files,
 			Map<String, Stats> distribution, int num, boolean useMHSampling, List<SamplePath> res_list,
 			Hashtable<String, List<SamplePath>> filereclist, Job originjob)
 	{
 		if (distribution == null || distribution.size() == 0)
 		{
-			return RandomSample(files, distribution, num, res_list, originjob);
+			return randomSampleByNum(files, distribution, num, res_list, filereclist, originjob);
 		}
 		if (num > files.size())
 			num = files.size();
@@ -192,8 +277,9 @@ public class SamplingAlg {
 		
 		Long sample_len = new Long(0);
 		Long sample_time = new Long(0);
+		sample_time += TIME_FILE_LOAD_FIRST * distribution.size();
 		for (String key: sizeProportion.keySet()) {
-			long countFolder = Math.round(sizeProportion.get(key)) - 1;
+			long countFolder = Math.max(Math.round(sizeProportion.get(key)), 1);
 			while(countFolder > 0) {
 				int idx = rand.nextInt(filereclist.get(key).size());
 				SamplePath fileRec = filereclist.get(key).get(idx);
@@ -208,101 +294,9 @@ public class SamplingAlg {
 				res_list.add(fileRec);
 				sampledSize.put(folder, sampledSize.get(folder) + 1);
 				sample_len += fileRec.size;
-				sample_time += getTimeFromStats(folder, distribution, originjob);
+				sample_time += getTimeFromStats(folder, distribution, originjob) + TIME_FILE_LOAD;
 			}
-		}
-		/*int count = num;
-	    int failCount = 0;
-	    String next_variable = ""; // The next should sampled variable by MH, x_i, e.g., camera-loc.
-		while(count > 0.99)
-		{
-			int idx = rand.nextInt(files.size());
-			SamplePath fileRec = files.get(idx);
-			int idxFolder = rand.nextInt(keyList.size());
-			String folderKey = keyList.get(idxFolder);
-			if (sizeProportion.get(folderKey) < 1.0) {
-				if (isAllDone(sizeProportion))
-					break;
-				else
-					continue;			
-			}
-			int idx = rand.nextInt(filereclist.get(folderKey).size());
-			SamplePath fileRec = filereclist.get(folderKey).get(idx);
-			
-			String folder = fileRec.file_path.toString();	
-			folder = folder.substring(folder.lastIndexOf("/")+1);
-			folder+="/1";
-			boolean isChosen = false;
-			if (useMHSampling) { // MH sampling algorithm
-				String cur_variable = folder; // For sequence file format.
-				if (next_variable.equals("") || next_variable.equals(cur_variable)) {					
-					if (!isValidFileSize(files.get(idx).size)) {
-						//LOG.debug("^^^^^^^^^^  length err: " + files.get(idx).sample_key + "; " + files.get(idx).size);
-						continue;						  
-					}
-					res_list.add(fileRec);
-					sampledSize.put(cur_variable, sampledSize.get(cur_variable) + 1);
-					sample_len += files.get(idx).size;
-					sample_time += getTimeFromStats(cur_variable, distribution);
-						
-					count--;
-					isChosen = true;
-					// To find the next sample variable.
-					int variable_idx = rand.nextInt(distribution.size());
-					for (String key : distribution.keySet())
-					{
-						if (variable_idx == 0) 
-						{
-							next_variable = key;
-							break;
-						}
-						variable_idx--;
-					}
-					// Determine the next vairable based on MH algorithm.
-					next_variable = MHGetNextVariable(cur_variable, next_variable, distribution);
-				}
-			} else { // Sample based on size proportion
-				for (String key : sizeProportion.keySet()) {
-					if (key.equals(folder) && sizeProportion.get(key) >= 1.0) {											  
-						if (!isValidFileSize(files.get(idx).size)) {
-							//LOG.debug("^^^^^^^^^^  length err: " + files.get(idx).sample_key + "; " + files.get(idx).size);
-						}
-						sample_len += files.get(idx).size;
-						sample_time += getTimeFromStats(key, distribution);
-						sizeProportion.put(key, sizeProportion.get(key) - 1.0); // decrease one from quota
-						res_list.add(fileRec);
-						sampledSize.put(key, sampledSize.get(key) + 1);
-							
-						count--;
-						isChosen = true;
-						break;
-					}
-				}
-			}
-			if (!isChosen)
-				failCount++;
-			else
-				failCount = 0;
-			// If we can not find valid samples after many tries, we accept it first if 
-			// the folder (camera-loc) is of interest to us.
-			if (failCount > 5 * num && failCount <= 5 * num + 1 ) {
-				if (sizeProportion.containsKey(folder)) {
-					sizeProportion.put(folder, sizeProportion.get(folder) - 1.0);
-					res_list.add(fileRec);
-					if (isValidFileSize(files.get(idx).size)) {
-						 sample_len += files.get(idx).size;
-						 sample_time += getTimeFromStats(folder, distribution);
-					}
-					else
-						//LOG.debug("^^^^^^^^^^  length err: " + files.get(idx).sample_key + "; " + files.get(idx).size);
-					  
-					count--;
-					failCount = 0;
-				}
-			} else if (failCount > 10 * num ) { // If failed too many times, just break.
-				  break;
-			}
-		}*/
+		}		
 		for (String key : sampledSize.keySet()) {
 			LOG.debug("RandomSample-final: " + key + " " + sampledSize.get(key));
 		}
@@ -331,13 +325,13 @@ public class SamplingAlg {
 	   * @param res_list
 	   * @return
 	   */
-	public static Long[] RandomSampleWithDistributionByTime(List<SamplePath> files,
+	public static Long[] sampleWithDistributionByTime(List<SamplePath> files,
 			  Map<String, Stats> distribution,  long time_total, boolean useMHSampling,
 			  List<SamplePath> res_list,
 			  Hashtable<String, List<SamplePath>> filereclist, Job originjob)
 	  {
 		  if (distribution == null || distribution.size() == 0) {
-			  return RandomSample(files, distribution, 0, res_list, originjob);
+			  return randomSampleByNum(files, distribution, 0, res_list, filereclist, originjob);
 		  }
 		  // Record the number of actual samples.
 		  Map<String, Double> sampledSize = new HashMap<String, Double>();
@@ -353,6 +347,7 @@ public class SamplingAlg {
 			  toal_std_time += std_time;
 			  keyList.add(key);
 		  }
+		  time_total -= TIME_FILE_LOAD_FIRST * distribution.size();
 		  for (String key : distribution.keySet()) {			  
 			  // std / sqrt(timeCost)
 			  double std_by_time = distribution.get(key).getStd() / Math.sqrt(distribution.get(key).getAvg());	
@@ -362,8 +357,9 @@ public class SamplingAlg {
 		  
 		  Long sample_len = new Long(0);
 		  Long sample_time = new Long(0);
+		  sample_time += TIME_FILE_LOAD_FIRST * distribution.size();
 		  for (String key: sizeProportion.keySet()) {
-			  long countFolder = Math.round(sizeProportion.get(key)) - 1;
+			  long countFolder = Math.round(sizeProportion.get(key));
 				while(countFolder > 0) {
 					int idx = rand.nextInt(filereclist.get(key).size());
 					SamplePath fileRec = filereclist.get(key).get(idx);
@@ -378,103 +374,9 @@ public class SamplingAlg {
 					res_list.add(fileRec);
 					sampledSize.put(folder, sampledSize.get(folder) + 1);
 					sample_len += fileRec.size;
-					sample_time += getTimeFromStats(folder, distribution, originjob);
+					sample_time += getTimeFromStats(folder, distribution, originjob) + TIME_FILE_LOAD;
 				}
 			}
-		  /*int time = 0;
-		  int failCount = 0;
-		  String next_variable = ""; // The next should sampled variable by MH, x_i, e.g., camera-loc.
-		  while(time < time_total ) //&& count > 0.99
-		  {
-			  int idx = rand.nextInt(files.size());
-				SamplePath fileRec = files.get(idx);
-			  int idxFolder = rand.nextInt(keyList.size());
-			  String folderKey = keyList.get(idxFolder);
-			  if (sizeProportion.get(folderKey) < 1.0) {
-				  if (isAllDone(sizeProportion))
-					  break;
-				  else
-					  continue;
-			  }
-			  int idx = rand.nextInt(filereclist.get(folderKey).size());
-			  SamplePath fileRec = filereclist.get(folderKey).get(idx);
-			  String folder = fileRec.file_path.toString();
-			  folder = folder.substring(folder.lastIndexOf("/")+1);
-			  folder+="/1";
-			  String cur_variable = folder; // For sequence file format.
-			  boolean isChosen = false;
-			  if (useMHSampling) { // MH sampling algorithm			  					
-				  if (distribution.containsKey(cur_variable) && 
-						  (next_variable.equals("") || next_variable.equals(cur_variable))) {
-					  res_list.add(fileRec);
-					  sampledSize.put(cur_variable, sampledSize.get(cur_variable) + 1);	
-					  if (isValidFileSize(files.get(idx).size)) {
-						  sample_len += files.get(idx).size;
-						  sample_time += getTimeFromStats(cur_variable, distribution);
-					  }
-					  else
-						 //LOG.debug("^^^^^^^^^^  length err: " + files.get(idx).sample_key + "; " + files.get(idx).size);
-					  time += distribution.get(cur_variable).getAvg(); // add the time cost for this variable
-					  //count--;
-					  isChosen = true;
-					  // To find the next sample variable.
-					  int variable_idx = rand.nextInt(distribution.size());
-					  for (String key : distribution.keySet()) {
-						  if (variable_idx == 0) {
-							  next_variable = key;
-							  break;
-						  }
-						  variable_idx--;
-					  }
-					  // Determine the next vairable based on MH algorithm.
-					  next_variable = MHGetNextVariable(cur_variable, next_variable, distribution);
-				  }
-			  } else { // Sample based on size proportion
-				  for (String key : sizeProportion.keySet()) {
-					  if (key.equals(folder) && sizeProportion.get(key) >= 1.0) {
-						  sizeProportion.put(key, sizeProportion.get(key) - 1.0); // decrease one from quota
-						  res_list.add(fileRec);
-						  sampledSize.put(key, sampledSize.get(key) + 1);					  
-						  if (isValidFileSize(files.get(idx).size)) {
-							  sample_len += files.get(idx).size;
-							  sample_time += getTimeFromStats(key, distribution);
-						  }
-						  else
-							  //LOG.debug("^^^^^^^^^^  length err: " + files.get(idx).sample_key + "; " + files.get(idx).size);
-						  
-						  time += distribution.get(cur_variable).getAvg(); // add the time cost for this variable
-						  //count--;
-						  isChosen = true;
-						  break;
-					  }
-				  }
-			  }
-			  if (!isChosen)
-				  failCount++;
-			  else
-				  failCount = 0;
-			  // If we can not find valid samples after many tries, we accept it first if 
-			  // the folder (camera-loc) is of interest to us.
-			  if (failCount > 5 * time_total && failCount <= 5 * time_total ) {
-				  if (sizeProportion.containsKey(folder)) {
-					  sizeProportion.put(folder, sizeProportion.get(folder) - 1.0);
-					  res_list.add(fileRec);
-					  sampledSize.put(folder, sampledSize.get(folder) + 1);
-					  if (isValidFileSize(files.get(idx).size)) {
-						  sample_len += files.get(idx).size;
-						  sample_time += getTimeFromStats(folder, distribution);
-					  }
-					  else
-						  //LOG.debug("^^^^^^^^^^  length err: " + files.get(idx).sample_key + "; " + files.get(idx).size);
-					  
-					  time += distribution.get(folder).getAvg(); // add the time cost for this variable
-					  //count--;
-					  failCount = 0;
-				  }
-			  } else if (failCount > 10 * time_total ) { // If failed too many times, just break.
-				  break;
-			  }
-		  }*/
 		  for (String key : sampledSize.keySet()) {
 			  LOG.debug("RandomSample-final: " + key + " " + sampledSize.get(key));
 		  }
@@ -492,7 +394,7 @@ public class SamplingAlg {
 	 * @param res_list
 	 * @return
 	 */
-	public static Long[] RandomSampleWithDirs(List<SamplePath> files, Map<String, Stats> stats,
+	public static Long[] evenSampleWithDirs(List<SamplePath> files, Map<String, Stats> stats,
 			int numPerFolder, List<SamplePath> res_list,
 			Hashtable<String, List<SamplePath>> filereclist, Job originjob) {
 		Map<String, Stats> sizeProportion = new HashMap<String, Stats>();
@@ -510,14 +412,14 @@ public class SamplingAlg {
 		}
 		int num = numPerFolder * sizeProportion.size(); // sum = #folder * numPerFolder.
 		LOG.debug("Next sampleNumber = " + num);
-		return RandomSampleWithDistribution(files, sizeProportion, num, false,
+		return sampleWithDistribution(files, sizeProportion, num, false,
 				res_list, filereclist, originjob);
 	}
 	
 	
-	public static Long[] RandomSampleWithDirsByTime(List<SamplePath> files, Map<String, Stats> stats,
+	public static Long[] evenSampleWithDirsByTime(List<SamplePath> files, Map<String, Stats> stats,
 			int numPerFolder, long total_time, boolean use_all_time, long avg_time_cost,
-			List<SamplePath> res_list, Hashtable<String, List<SamplePath>> filereclist, Job originjob) {
+			List<SamplePath> res_list, Hashtable<String, List<SamplePath>> filereclist, Job originjob) {		
 		Map<String, Stats> sizeProportion = new HashMap<String, Stats>();
 		long time_cost = 0;
 		for(String k : filereclist.keySet())
@@ -531,11 +433,12 @@ public class SamplingAlg {
 			if (stats.containsKey(folder)) {
 				double cost = stats.get(folder).getAvg();
 				newStats.setAvg(cost);
-				time_cost += numPerFolder * cost;
+				time_cost += numPerFolder * (cost + TIME_FILE_LOAD);
 			} else 
-				time_cost += numPerFolder * avg_time_cost;
+				time_cost += numPerFolder * (avg_time_cost + TIME_FILE_LOAD);
 			sizeProportion.put(folder, newStats); // average among directories.
 		}
+		total_time = total_time - TIME_FILE_LOAD_FIRST * sizeProportion.size();
 		double kappa = 1.0;	
 		if (use_all_time) { // scale to the total_time
 			kappa = total_time / (double) time_cost;
@@ -546,7 +449,7 @@ public class SamplingAlg {
 		int num = (int) (numPerFolder * sizeProportion.size() * kappa); // sum = #folder * numPerFolder
 		LOG.debug("time_cost = " + time_cost + "  total_time = " + total_time + "  kappa = " + kappa);
 		LOG.debug("Next sampleNumber = " + num);
-		return RandomSampleWithDistribution(files, sizeProportion, num, false,
+		return sampleWithDistribution(files, sizeProportion, num, false,
 				res_list, filereclist, originjob);
 	}
 }
