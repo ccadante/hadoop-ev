@@ -150,7 +150,7 @@ public class EVStatsServer implements Runnable {
 			for (EVStatistics.CacheItem ci : evs.cacheList) {
 				String cikey = DirUtil.GetLast2ndSeg(ci.key);
 				String content = ci.key + ";" + ci.value + "\n";
-//				LOG.info("key value : " + content);
+				//LOG.info("key value : " + content);
 				
 				FSDataOutputStream os = cache_file_map.get(cikey);
 				if (os == null) {
@@ -161,19 +161,20 @@ public class EVStatsServer implements Runnable {
 							job.getConfiguration().get("fs.default.name") + "/cache/" + cikey);
 				}
 			    os.write(content.getBytes("UTF-8"));
-			}
+			    os.flush();
+			}			
 		}
-		
-		/**
-		 * Close all file streams
-		 * @throws IOException 
-		 */
-		public void closeHDFS() throws IOException
-		{
-			for (Map.Entry<String, FSDataOutputStream> ent : cache_file_map.entrySet())
-				ent.getValue().close();
-			hdfs.close();
-		}
+	}
+	
+	/**
+	 * Close all file streams
+	 * @throws IOException 
+	 */
+	public void closeHDFS() throws IOException
+	{
+		for (Map.Entry<String, FSDataOutputStream> ent : cache_file_map.entrySet())
+			ent.getValue().close();
+		hdfs.close();
 	}
 	
 	public EVStatsServer(int pt, JobTracker tracker){
@@ -258,7 +259,7 @@ public class EVStatsServer implements Runnable {
 	public void stop() {
 		running = false;
 		if (listThread.getState() == Thread.State.BLOCKED)
-			listThread.interrupt();
+			listThread.interrupt();		
 		LOG.info("Server stopped.");
 	}
 }

@@ -52,7 +52,7 @@ public class CacheJob {
 		{
 			cachekeylist.add(fs.getPath().toString());
 		}
-		SetupCacheJob(job, cachekeylist);
+		SetupCacheJob(job, cachekeylist, 0);
 	}
 	
 	/**
@@ -74,7 +74,7 @@ public class CacheJob {
 				cachekeylist.add(sfr.getCacheKey());
 			}
 		}
-		SetupCacheJob(job, cachekeylist);
+		SetupCacheJob(job, cachekeylist, 0);
 	}
 	
 
@@ -86,7 +86,7 @@ public class CacheJob {
 	 * @throws IOException 
 	 * @throws IllegalStateException 
 	 */
-	public CacheJob(Job job, Hashtable<String, List<SamplePath>> file_rec_list_map) throws IllegalStateException, IOException, ClassNotFoundException
+	public CacheJob(Job job, Hashtable<String, List<SamplePath>> file_rec_list_map, int expC) throws IllegalStateException, IOException, ClassNotFoundException
 	{
 		seqmode = 2;
 		List<String> cachekeylist = new ArrayList<String>();
@@ -97,10 +97,10 @@ public class CacheJob {
 				cachekeylist.add(sp.sample_key);
 			}
 		}
-		SetupCacheJob(job, cachekeylist);
+		SetupCacheJob(job, cachekeylist, expC);
 	}
 	
-	public void SetupCacheJob(Job job, List<String> fslist) throws IOException, IllegalStateException, ClassNotFoundException
+	public void SetupCacheJob(Job job, List<String> fslist, int expC) throws IOException, IllegalStateException, ClassNotFoundException
 	{
 		JobConf jobconf = (JobConf)(job.getConfiguration());
 
@@ -123,25 +123,58 @@ public class CacheJob {
 		if(!hdfs.exists(new Path(cache_prefix)))
 			hdfs.mkdirs(new Path(cache_prefix));
 		
-		if(hdfs.exists(new Path(cache_prefix + "/inputfilelist")))
-			hdfs.delete(new Path(cache_prefix + "/inputfilelist"), true);
-		
-		FSDataOutputStream os = hdfs.create(new Path(
-						cache_prefix + "/inputfilelist"));
+		FileStatus cachefiles[] = hdfs.listStatus(new Path(cache_prefix));
+		boolean hasCacheFiles = false;
+		for(int i = 0; i< cachefiles.length; i++)
+		{
+			Path cachefile = cachefiles[i].getPath();
+			// ignore inputfilelist
+			if (DirUtil.GetLastSeg(cachefile.toString()).contains("inputfilelist"))
+				continue;
+			hasCacheFiles = true;
+			break;
+		}
+		if (!hasCacheFiles) {
+			LOG.debug("Can not find any cache files!");
+			cachejob = null;
+			return;
+		}
 		
 		int prelen = jobconf.get("fs.default.name").length();
 		LOG.info("seqmode = " + seqmode); 
+		int inputfileC = 1;
+		int fsCount = 0;
+		if(hdfs.exists(new Path(cache_prefix + "/inputfilelist" + inputfileC)))
+			hdfs.delete(new Path(cache_prefix + "/inputfilelist" + inputfileC), true);
+		FSDataOutputStream os = hdfs.create(new Path(
+				cache_prefix + "/inputfilelist" + inputfileC));		
 		for (String fs : fslist)
 		{
+			fsCount++;
+			if (fsCount > (fslist.size() / max_slotnum)) {
+				inputfileC++;
+				fsCount = 0;
+				os.close();
+				if(hdfs.exists(new Path(cache_prefix + "/inputfilelist" + inputfileC)))
+					hdfs.delete(new Path(cache_prefix + "/inputfilelist" + inputfileC), true);
+				os = hdfs.create(new Path(
+						cache_prefix + "/inputfilelist" + inputfileC));
+			}
 			String line = ((seqmode == 0 ) ? fs.substring(prelen) : fs) + "\n";
 			os.write(line.getBytes("UTF-8"));
 		}
 		os.close();
 		
+		String inputFileList = "";
+		for (int c = 1; c<inputfileC; c++) {
+			inputFileList += cache_prefix + "/inputfilelist" + c + ",";
+		}
+		inputFileList += cache_prefix + "/inputfilelist" + inputfileC;
+		
 		/* Calculate the files size in Byte */
-		long input_len = hdfs.getContentSummary(new Path(cache_prefix + "/inputfilelist")).getLength();
-		Long splitsize = input_len/max_slotnum;
-		LOG.info("Inputfilelist Length = " + input_len + "; Slot Num = " + max_slotnum + "; Split Size = " + splitsize);
+		//long input_len = hdfs.getContentSummary(new Path(cache_prefix + "/inputfilelist")).getLength();
+		//Long splitsize = input_len/max_slotnum;
+		//LOG.info("Inputfilelist Length = " + input_len + "; Slot Num = " + max_slotnum + "; Split Size = " + splitsize);
 		
 		/* create the cache job */
 		JobConf cacheconf = new JobConf();
@@ -156,11 +189,11 @@ public class CacheJob {
 		cachejob.setInputFormatClass(TextInputFormat.class);
 		cachejob.setOutputKeyClass(job.getOutputKeyClass());
 		cachejob.setOutputValueClass(job.getOutputValueClass());
-		cachejob.getConfiguration().set("mapreduce.input.fileinputformat.split.maxsize", splitsize.toString());
+		//cachejob.getConfiguration().set("mapreduce.input.fileinputformat.split.maxsize", splitsize.toString());
 		
-	    FileInputFormat.setInputPaths(cachejob, new Path("/cache/inputfilelist"));	    
+	    FileInputFormat.addInputPaths(cachejob, inputFileList);	    
 	    String outputpath = FileOutputFormat.getOutputPath(job).toString();
-	    outputpath = outputpath + "_cache";
+	    outputpath = outputpath + "_cache" + "_" + expC;
 	    FileOutputFormat.setOutputPath(cachejob, new Path(outputpath));
 	}
 	
@@ -174,8 +207,8 @@ public class CacheJob {
 		{
 			cachejob.waitForCompletion(true);
 			LOG.info("REDCLASS: " + cachejob.getReducerClass().toString());
-			if(hdfs.exists(new Path(cache_prefix + "/inputfilelist")))
-				hdfs.delete(new Path(cache_prefix + "/inputfilelist"), true);
+			if(hdfs.exists(new Path(cache_prefix + "/inputfilelist\\*")))
+				hdfs.delete(new Path(cache_prefix + "/inputfilelist\\*"), true);
 		}
 	}
 	
@@ -194,11 +227,11 @@ public class CacheJob {
 			{
 				Path cachefile = cachefiles[i].getPath();
 				// ignore inputfilelist
-				if (DirUtil.GetLastSeg(cachefile.toString()).equals("inputfilelist"))
+				if (DirUtil.GetLastSeg(cachefile.toString()).contains("inputfilelist"))
 					continue;
 				FSDataInputStream ins = hdfs.open(cachefile);
 				BufferedReader reader = new BufferedReader(new InputStreamReader(ins));
-				System.out.println("input file list: " + cachefile);
+				//System.out.println("input file list: " + cachefile);
 				if (ins == null) 
 				{
 					System.out.println("Cannot open input file list");
@@ -208,8 +241,10 @@ public class CacheJob {
 				while(line != null)
 				{
 					String[] kvpair = line.split(";");
-					cachehash.put(kvpair[0], Integer.parseInt(kvpair[1]));
-					System.out.println("			" + line);
+					if (kvpair.length == 2) {
+						cachehash.put(kvpair[0], Integer.parseInt(kvpair[1]));
+					}
+					//System.out.println("			" + line);
 					line = reader.readLine();
 				}
 				reader.close();
@@ -220,14 +255,14 @@ public class CacheJob {
 		public void map(LongWritable key, Text value, Context context) throws IOException, InterruptedException
 		{
 			String valueline = value.toString();
-			System.out.println("input file = " + valueline + "; hashsize = " + cachehash.size());
+			//System.out.println("input file = " + valueline + "; hashsize = " + cachehash.size());
 			Integer cacheresult = cachehash.get(valueline);
 			if (cacheresult != null)
 			{
 				System.out.println("CACHE HIT!!!   " + valueline);
 				String keyout = valueline.substring(0, valueline.lastIndexOf("/"));
 				context.write(new Text(keyout), new IntWritable(cacheresult));
-				System.out.println("CACHE HIT!!! key = " + key);
+				//System.out.println("CACHE HIT!!! key = " + key);
 			}
 		}
 	}

@@ -118,6 +118,18 @@ public class Job extends JobContext {
 	  MapFileSampleProc.resetWholeInputFileList();
   }
   
+  public void clearCache() {
+	  LOG.info("clearCache!");
+	  FileSystem fs;
+	try {
+		fs = FileSystem.get(this.getConfiguration());
+		String cache_prefix = this.getConfiguration().get("fs.default.name") + "/cache/";
+		fs.delete(new Path(cache_prefix), true); // delete file, true for recursive 
+	} catch (IOException e) {
+		e.printStackTrace();
+	}	  
+  }
+  
   private void ensureState(JobState state) throws IllegalStateException {
     if (state != this.state) {
       throw new IllegalStateException("Job in state "+ this.state + 
@@ -834,13 +846,17 @@ public class Job extends JobContext {
       for (ArrayList<Double> times : mapperTimes) {
     	  firstMapperTime = Math.min(firstMapperTime, Math.round(times.get(0)));
     	  lastMapperTime = Math.max(lastMapperTime, Math.round(times.get(0) + times.get(1)));
-      }      
-      Long avgReducerTime = 0L;
-      for (ArrayList<Double> times : reducerTimes) {
-    	  avgReducerTime += Math.round(times.get(1));
       }
-      if (reducerTimes.size() > 0)
-    	  avgReducerTime = avgReducerTime / reducerTimes.size();
+      Long avgReducerTime = 0L;
+      int nonZeroC = 0;
+      for (ArrayList<Double> times : reducerTimes) {
+    	  if (times.size() > 2) {
+    		  avgReducerTime += Math.round(times.get(1));
+    		  nonZeroC++;
+    	  }
+      }
+      if (nonZeroC > 0)
+    	  avgReducerTime = avgReducerTime / nonZeroC;
       else
     	  LOG.debug("Invalid reducerTimes (probably also mapperTimes)!");
       // Do remember to clear mapperTimes and reducerTimes every time!

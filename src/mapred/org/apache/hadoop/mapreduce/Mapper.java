@@ -200,6 +200,7 @@ public class Mapper<KEYIN, VALUEIN, KEYOUT, VALUEOUT> {
    */
   public void run(Context context) throws IOException, InterruptedException {
 	  int enableStats = context.getConfiguration().getInt("mapred.evstatistic.enable", 1);
+	  int enableCache = context.getConfiguration().getInt("mapred.evstatistic.enableCache", 0);
 	long t0 = System.currentTimeMillis();
     setup(context);    
     long t_cur = System.currentTimeMillis();
@@ -219,6 +220,8 @@ public class Mapper<KEYIN, VALUEIN, KEYOUT, VALUEOUT> {
 //      {
 	      long t1 = System.nanoTime();
 	      map(context.getCurrentKey(), context.getCurrentValue(), context);
+	      if (context.getLastValueOut() == null) 
+	    	  continue;
 	      String value = context.getLastValueOut().toString();
 	      long t2 = System.nanoTime();
 	      if (enableStats == 1)
@@ -228,10 +231,12 @@ public class Mapper<KEYIN, VALUEIN, KEYOUT, VALUEOUT> {
 	    		  continue;
 	    	  }
 	    	  context.addStat((t2 - t1)/1000); // in microsecond
-//	    	  context.addCache();
+	    	  if(enableCache == 1)
+	    		  context.addCache();
 	      }
-	      LOG.info(context.getCurrentKey().toString() + "  "
-	    		  + (System.currentTimeMillis() - t_cur) + "ms");
+	      /*if (enableStats == 1)
+		      LOG.info(context.getCurrentKey().toString() + "  "
+		    		  + (System.currentTimeMillis() - t_cur) + "ms");*/
 	      t_cur = System.currentTimeMillis();
 //      }
     }       

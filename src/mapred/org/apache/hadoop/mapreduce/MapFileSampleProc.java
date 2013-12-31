@@ -63,8 +63,9 @@ public class MapFileSampleProc {
 	private float splitsTimeCoeff;
 	private int testLoadBalance;
 	private long testLoadBalanceSize;
+	private int enableCache;;
 	private DistributedFileSystem hdfs;
-	private int max_slotnum;
+	public int max_slotnum;
 	private long all_input_len = 0;
 	
 	
@@ -123,6 +124,8 @@ public class MapFileSampleProc {
 		// Get the sampling policy (algorithm): 0: MaReV  1: uniform (proportion to folder)  2: same size per folder
 		samplingPolicy = job.getConfiguration().getInt("mapred.sample.policy", 0);
 		
+		enableCache = job.getConfiguration().getInt("mapred.evstatistic.enableCache", 0);
+		
 		expCount = job.getConfiguration().getInt("mapred.sample.experimentCount", 1);
 		// Get number of Map slots in the cluster.
 		int datanode_num = hdfs.getDataNodeStats().length;
@@ -138,10 +141,6 @@ public class MapFileSampleProc {
 	
 	public boolean start() throws IOException, InterruptedException, ClassNotFoundException
 	{
-		/* start cache job first */
-		//CacheJob cachejob = new CacheJob(originjob, filereclist);
-		//cachejob.Start();
-	
 		List<SamplePath> files = GetWholeFileRecordList();
 		
 		int expC = 0;
@@ -149,13 +148,23 @@ public class MapFileSampleProc {
 			expC++;
 			LOG.info("");
 			LOG.info("*** number of images = " + files.size() + " ***");
-			int runCount = 0;
-			long deadline = System.currentTimeMillis() + timeConstraint; // in millisecond
-			long timer = System.currentTimeMillis();
-			long N = files.size(); // Total input records number.	
+			long N = files.size(); // Total input records number.
 			
 			// Clear any pre-existing stats, for example, from Caching setup job.
 			originjob.clearEVStats();
+			
+			long deadline = System.currentTimeMillis() + timeConstraint; // in millisecond
+			long timer = System.currentTimeMillis();			
+			
+			/* start cache job first */
+			if (enableCache == 1) {				
+				CacheJob cachejob = new CacheJob(originjob, filereclist, expC);
+				if (cachejob.cachejob != null) {
+					LOG.debug("Run cachejob!");
+					cachejob.Start();	
+				}
+			}
+			
 			long extraCost = 0L;
 			LOG.info("*** Deadline - " + (timeConstraint / 1000) + " ***");
 			LOG.info("*** Policy - " + samplingPolicy + " ***");
@@ -176,9 +185,10 @@ public class MapFileSampleProc {
 				}
 			}
 			
-			int[] timeBudgetForRandom = new int[10];
+			int[] timeBudgetForRandom = new int[20];
 			
 			long computationTime = 0;
+			int runCount = 0;
 			while(System.currentTimeMillis() < deadline)
 			//while(computationTime < timeConstraint && System.currentTimeMillis() < deadline)
 			{		
@@ -251,7 +261,7 @@ public class MapFileSampleProc {
 									  SamplingAlg.K_0_1, time_budget * max_slotnum, false, avgTime, inputfiles, filereclist, originjob);
 							sample_len = sample_results[0];
 							sample_time = sample_results[1];
-						} else if (runCount == 3){
+						} else if (runCount >= 3){
 							time_budget = (long) (((deadline - System.currentTimeMillis()) - extraCost));
 							if (time_budget < 2000) {
 								run_skip_break = 2;
@@ -259,7 +269,7 @@ public class MapFileSampleProc {
 							time_budget = Math.max(time_budget, 2000);
 							LOG.debug("Next sampleTime = " + time_budget + " ms (x " + max_slotnum + ")");			  
 							sample_results = SamplingAlg.sampleWithDistributionByTime(
-									  files, myStats, time_budget * max_slotnum, false, inputfiles, filereclist, originjob);
+									  files, myStats, time_budget * max_slotnum, max_slotnum, false, inputfiles, filereclist, originjob);
 						  	sample_len = sample_results[0];
 						  	sample_time = sample_results[1];
 						}
@@ -269,11 +279,12 @@ public class MapFileSampleProc {
 					case 11 : {
 						//int maxRound = 10;
 						if (runCount == 1) {
-							int roundTotal = 2 + rand.nextInt(8);
-							int timeTotal = (int) (deadline - System.currentTimeMillis() - 2 * 10000);
+							int roundTotal = 2 + rand.nextInt(10);
+							int timeTotal = (int) (deadline - System.currentTimeMillis() - 3 * 10000);
 							timeTotal = Math.max(timeTotal, 2 * 2000);
 							for (int i = 0; i<roundTotal - 1; i++) {
 								int timeCur = rand.nextInt(timeTotal / (roundTotal - i));
+								timeCur = Math.min(timeCur, 10000);
 								timeBudgetForRandom[i] = timeCur;
 								timeTotal -= timeCur;
 							}
@@ -292,7 +303,7 @@ public class MapFileSampleProc {
 						} else if (runCount >= 2) {
 							time_budget = timeBudgetForRandom[runCount - 1];
 							time_budget = Math.min(time_budget, (deadline - System.currentTimeMillis() - extraCost));
-							if (time_budget < 2000) {
+							if ((deadline - System.currentTimeMillis() - extraCost) < 2000) {
 								run_skip_break = 2;
 							}
 							LOG.debug("Next sampleTime = " + time_budget + " ms (x " + max_slotnum + ")");					  
@@ -367,7 +378,7 @@ public class MapFileSampleProc {
 				
 				/* set input file path */;
 				if (inputfiles.size() == 0) 
-					continue;
+					break;
 				inputfiles = GetReorderedInput(inputfiles);
 				String[] inputarr = new String[inputfiles.size()];
 				int i = 0;
@@ -464,8 +475,9 @@ public class MapFileSampleProc {
 			/*long timeDiff = computationTime - timeConstraint;
 			 LOG.info("Final timeConstraint diff: " + timeDiff + "ms");*/
 			
-			double[] results = originjob.processReduceResults(0, N, OpType.SUM, true);
-			LOG.info("FINAL RESULT ESTIMATION: sum(avg(Loc)) = " + results[0] + "+-" + results[1] + 
+			double[] results = originjob.processReduceResults(0, N, OpType.SUM, true);			
+			LOG.info("FINAL RESULT ESTIMATION: sum(avg(Loc)) = " + String.format("%.3f", results[0])
+					+ "+-" + String.format("%.3f", results[1]) + 
 					  " (95% confidence).");
 			if (testLoadBalance > 0) {
 				LOG.info("FINAL COMPUTATION TIME: " + (lastMapperTime - firstMapperTime) + "ms");

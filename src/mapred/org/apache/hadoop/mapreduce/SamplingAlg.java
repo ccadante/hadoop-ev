@@ -326,8 +326,8 @@ public class SamplingAlg {
 	   * @return
 	   */
 	public static Long[] sampleWithDistributionByTime(List<SamplePath> files,
-			  Map<String, Stats> distribution,  long time_total, boolean useMHSampling,
-			  List<SamplePath> res_list,
+			  Map<String, Stats> distribution,  long time_total, int max_slotnum,
+			  boolean useMHSampling, List<SamplePath> res_list,
 			  Hashtable<String, List<SamplePath>> filereclist, Job originjob)
 	  {
 		  if (distribution == null || distribution.size() == 0) {
@@ -347,20 +347,32 @@ public class SamplingAlg {
 			  toal_std_time += std_time;
 			  keyList.add(key);
 		  }
-		  time_total -= TIME_FILE_LOAD_FIRST * distribution.size();
+		  int nonZeroFolderC = 0;
 		  for (String key : distribution.keySet()) {			  
 			  // std / sqrt(timeCost)
-			  double std_by_time = distribution.get(key).getStd() / Math.sqrt(distribution.get(key).getAvg());	
-			  sizeProportion.put(key, std_by_time / toal_std_time * time_total);
+			  double std_by_time = distribution.get(key).getStd() / Math.sqrt(distribution.get(key).getAvg());
+			  double count = Math.round(std_by_time / toal_std_time * time_total);
+			  if (count >= 1) {
+				  nonZeroFolderC++;
+			  }
+			  sizeProportion.put(key, count);
 			  //LOG.debug("RandomSample-Proportion: " + key + " " + sizeProportion.get(key));
 		  }
-		  
+		  long ori_total = time_total;
+		  time_total -= TIME_FILE_LOAD_FIRST * nonZeroFolderC;
+		  double kappa = 1.0;
+		  time_total = Math.max(time_total, 1000 * max_slotnum);
+		  kappa = time_total / (double) ori_total;	  
+		  for (String key : distribution.keySet()) {			  
+			  sizeProportion.put(key, sizeProportion.get(key) * kappa);
+			  //LOG.debug("RandomSample-Proportion: " + key + " " + sizeProportion.get(key));
+		  }		  
 		  Long sample_len = new Long(0);
 		  Long sample_time = new Long(0);
-		  sample_time += TIME_FILE_LOAD_FIRST * distribution.size();
 		  for (String key: sizeProportion.keySet()) {
 			  long countFolder = Math.round(sizeProportion.get(key));
-				while(countFolder > 0) {
+			  boolean isFirst = true;
+				while(countFolder > 0) { 					
 					int idx = rand.nextInt(filereclist.get(key).size());
 					SamplePath fileRec = filereclist.get(key).get(idx);
 					String folder = fileRec.file_path.toString();	
@@ -375,6 +387,10 @@ public class SamplingAlg {
 					sampledSize.put(folder, sampledSize.get(folder) + 1);
 					sample_len += fileRec.size;
 					sample_time += getTimeFromStats(folder, distribution, originjob) + TIME_FILE_LOAD;
+					if (isFirst) {
+						sample_time += TIME_FILE_LOAD_FIRST;
+						isFirst = false;
+					}
 				}
 			}
 		  for (String key : sampledSize.keySet()) {
